@@ -1,0 +1,105 @@
+networks:
+  backend:
+    driver: ${NETWORKS_DRIVER}
+
+volumes:
+  build-cache:
+  takp-var-log:
+  mariadb-var-log:
+
+services:
+
+  takp-server:
+    hostname: ${SERVER_HOSTNAME:-}
+    restart: unless-stopped
+    build:
+      context: ./containers/takp-server
+    volumes:
+      - ./server:/home/eqemu/server:delegated
+      - ./source:/home/eqemu/source:delegated
+      - build-cache:/home/eqemu/.ccache/
+      - takp-var-log:/var/log/
+    ports:
+      - ${IP_ADDRESS}:6000:6000/udp
+      - ${IP_ADDRESS}:5998:5998
+      - ${IP_ADDRESS}:9000:9000/udp
+      - ${IP_ADDRESS}:9000:9000
+      - ${IP_ADDRESS}:7778:7778/udp
+      - ${IP_ADDRESS}:${PORT_RANGE_LOW:-7000}-${PORT_RANGE_HIGH}:${PORT_RANGE_LOW:-7000}-${PORT_RANGE_HIGH}/udp
+    environment:
+      - IP_ADDRESSS=${IP_ADDRESS:-127.0.0.1}
+      - PORT_RANGE_HIGH=${PORT_RANGE_HIGH}
+      - TZ=${TZ:-US/Eastern}
+    tty: true
+    networks:
+      - backend
+    cap_add:
+      # Needed for running perf traces
+      # - CAP_SYS_ADMIN
+      # For GDB traces but it has security implications
+      - SYS_PTRACE
+    depends_on:
+      - fail2ban-server
+
+  mariadb:
+    restart: unless-stopped
+    build:
+      context: ./containers/mariadb
+      args:
+        - INNODDB_BUFFER_POOL_SIZE=${INNODB_BUFFER_POOL_SIZE:-256MB}
+    ports:
+      - ${IP_ADDRESS}:3306:3306
+    volumes:
+      - ${DATA_PATH_HOST}/mariadb:/var/lib/mysql:delegated
+      - mariadb-var-log:/var/log/mysql/
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MARIADB_DATABASE}
+      - MYSQL_USER=${MARIADB_USER}
+      - MYSQL_PASSWORD=${MARIADB_PASSWORD}
+      - MYSQL_ALLOW_EMPTY_PASSWORD=NO
+      - TZ=${TZ:-US/Eastern}
+    networks:
+      - backend
+    depends_on:
+      - fail2ban-mariadb
+
+  fail2ban-server:
+    restart: unless-stopped
+    build:
+      context: containers/fail2ban-server
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - F2B_LOG_LEVEL=DEBUG
+      - F2B_DB_PURGE_AGE=30d
+      - F2B_MAX_RETRY=3
+      - F2B_ACTION=%(action_)s
+      - F2B_IPTABLES_CHAIN=DOCKER-USER
+      - TZ=${TZ:-US/Eastern}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/log:/var/log:ro
+      - takp-var-log:/eqemu/var/log
+
+  fail2ban-mariadb:
+    restart: unless-stopped
+    build:
+      context: ./containers/fail2ban-mariadb
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - F2B_LOG_LEVEL=DEBUG
+      - F2B_DB_PURGE_AGE=30d
+      - F2B_MAX_RETRY=3
+      - F2B_ACTION=%(action_)s
+      - F2B_IPTABLES_CHAIN=DOCKER-USER
+      - TZ=${TZ:-US/Eastern}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/log:/var/log:ro
+      - mariadb-var-log:/mariadb/var/log/mysql/
