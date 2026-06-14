@@ -37,7 +37,13 @@ fi
 if [ ! -f "/home/eqemu/build/bin/world" ] || [ "${FORCE_RECOMPILE:-false}" = "true" ]; then
     mkdir -p /home/eqemu/build
     cd /home/eqemu/build
-    cmake -GNinja -DEQEMU_BUILD_LOGIN=ON -DEQEMU_BUILD_LUA=ON -DEQEMU_BUILD_PERL=ON -DEQEMU_BUILD_LOGGING=ON /home/eqemu/source
+    cmake -GNinja \
+	-DCMAKE_C_COMPILER_LAUNCHER=ccache \
+	-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+	-DEQEMU_BUILD_LOGIN=ON \
+	-DEQEMU_BUILD_LUA=ON \
+	-DEQEMU_BUILD_PERL=ON \
+	-DEQEMU_BUILD_LOGGING=ON /home/eqemu/source
     ninja -v
 fi
 

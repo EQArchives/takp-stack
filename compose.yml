@@ -38,6 +38,7 @@ services:
       - PORT_RANGE_HIGH=${PORT_RANGE_HIGH}
       - SSH_AUTHORIZED_KEYS=${SSH_AUTHORIZED_KEYS}
       - TZ=${TZ:-US/Eastern}
+      - CCACHE_DIR=/home/eqemu/.ccache
       - FORCE_RECOMPILE=${FORCE_RECOMPILE:-false}
       - AUTO_PULL=${AUTO_PULL:-true}
     tty: true

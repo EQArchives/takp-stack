@@ -21,6 +21,7 @@ RUN groupadd -g ${PGID} eqemu && \
 
 RUN apt-get update && apt-get install -yqq \
 	bash \
+	ccache \
         clang \
 	openssh-server \
 	rsyslog \
