@@ -1,20 +1,20 @@
 #!/bin/bash
 set -e
 
-if [ ! -d "/opt/source/.git" ]; then
-    git clone https://github.com/EQArchives/Server.git /opt/source
-else
-    cd /opt/source && git pull
+# Write authorized keys for eqemu from env var
+if [ -n "${SSH_AUTHORIZED_KEYS}" ]; then
+    mkdir -p /home/eqemu/.ssh
+    printf '%s\n' "${SSH_AUTHORIZED_KEYS}" > /home/eqemu/.ssh/authorized_keys
+    chmod 700 /home/eqemu/.ssh
+    chmod 600 /home/eqemu/.ssh/authorized_keys
+    chown -R eqemu:eqemu /home/eqemu/.ssh
 fi
 
-if [ ! -d "/opt/server/quests/.git" ]; then
-   git clone https://github.com/EQArchives/quests.git /opt/server/quests
-else
-    cd /opt/server/quests && git pull
-fi
+# Ensure auth.log exists before rsyslog/sshd start (fail2ban watches this)
+touch /var/log/auth.log
+rsyslogd
+/usr/sbin/sshd
 
-if [ ! -d "/opt/server/maps/.git" ]; then
-   git clone https://github.com/EQMacEmu/Maps.git /opt/server/maps
-else
-   cd /opt/server/maps && git pull
-fi
+chown -R eqemu:eqemu /home/eqemu/source /home/eqemu/server
+exec su -s /bin/bash eqemu /home/eqemu/setup.sh
+

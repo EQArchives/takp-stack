@@ -12,8 +12,8 @@ ENV PGID=${PGID}
 
 ENV TZ=US/Eastern
 
-ENV CC=/usr/bin/clang
-ENV CXX=/usr/bin/clang++
+ENV CC=/usr/bin/gcc
+ENV CXX=/usr/bin/g++
 
 RUN groupadd -g ${PGID} eqemu && \
     useradd -u ${PUID} -g eqemu -m eqemu -G eqemu && \
@@ -21,7 +21,9 @@ RUN groupadd -g ${PGID} eqemu && \
 
 RUN apt-get update && apt-get install -yqq \
 	bash \
+        clang \
 	openssh-server \
+	rsyslog \
 	git \
 	gcc \
 	g++ \
@@ -46,16 +48,27 @@ RUN apt-get update && apt-get install -yqq \
     openssl \
     libcurl4-openssl-dev \
     libio-stringy-perl \
+    ninja-build \
     valgrind \
     ruby \
     ruby-dev \
     universal-ctags \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /opt/{source,build,server} && \
-    chown -R eqemu:eqemu /opt/{source,build,server} && \
-    git clone https://github.com/EQArchives/Server.git /opt/source
+RUN mkdir -p /var/run/sshd && \
+    ssh-keygen -A && \
+    mkdir -p /etc/ssh/sshd_config.d && \
+    printf 'PermitRootLogin no\nPasswordAuthentication no\nPubkeyAuthentication yes\n' \
+        > /etc/ssh/sshd_config.d/00-hardening.conf && \
+    printf 'auth,authpriv.* /var/log/auth.log\n' > /etc/rsyslog.d/50-auth.conf
 
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
+RUN bash -c 'mkdir -p /home/eqemu/{source,build,server} && chown -R eqemu:eqemu /home/eqemu/{source,build,server}'
+
+COPY entrypoint.sh /home/eqemu/entrypoint.sh
+COPY setup.sh /home/eqemu/setup.sh
+
+RUN chmod +x /home/eqemu/entrypoint.sh && \
+    chmod +x /home/eqemu/setup.sh
+
+ENTRYPOINT ["/home/eqemu/entrypoint.sh"]
+

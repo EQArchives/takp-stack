@@ -3,6 +3,7 @@ networks:
     driver: ${NETWORKS_DRIVER}
 
 volumes:
+  build:
   build-cache:
   takp-var-log:
   mariadb-var-log:
@@ -17,19 +18,28 @@ services:
     volumes:
       - ./server:/home/eqemu/server:delegated
       - ./source:/home/eqemu/source:delegated
+      - build:/home/eqemu/build
       - build-cache:/home/eqemu/.ccache/
       - takp-var-log:/var/log/
     ports:
-      - ${IP_ADDRESS}:6000:6000/udp
+      - ${IP_ADDRESS}:2222:22
       - ${IP_ADDRESS}:5998:5998
-      - ${IP_ADDRESS}:9000:9000/udp
-      - ${IP_ADDRESS}:9000:9000
+      - ${IP_ADDRESS}:6000:6000/udp
+      - ${IP_ADDRESS}:6999:6999/udp
       - ${IP_ADDRESS}:7778:7778/udp
+      - ${IP_ADDRESS}:7778:7778
+      - ${IP_ADDRESS}:9000-9001:9000-9001/udp
+      - ${IP_ADDRESS}:9000-9001:9000-9001
       - ${IP_ADDRESS}:${PORT_RANGE_LOW:-7000}-${PORT_RANGE_HIGH}:${PORT_RANGE_LOW:-7000}-${PORT_RANGE_HIGH}/udp
     environment:
+      - CC=${CC:-/usr/bin/gcc}
+      - CXX=${CXX:-/usr/bin/g++}
       - IP_ADDRESSS=${IP_ADDRESS:-127.0.0.1}
       - PORT_RANGE_HIGH=${PORT_RANGE_HIGH}
+      - SSH_AUTHORIZED_KEYS=${SSH_AUTHORIZED_KEYS}
       - TZ=${TZ:-US/Eastern}
+      - FORCE_RECOMPILE=${FORCE_RECOMPILE:-false}
+      - AUTO_PULL=${AUTO_PULL:-true}
     tty: true
     networks:
       - backend
@@ -46,9 +56,10 @@ services:
     build:
       context: ./containers/mariadb
       args:
-        - INNODDB_BUFFER_POOL_SIZE=${INNODB_BUFFER_POOL_SIZE:-256MB}
+        - INNODB_BUFFER_POOL_SIZE=${INNODB_BUFFER_POOL_SIZE:-256MB}
+        - MARIADB_PORT=${MARIADB_PORT:-3306}
     ports:
-      - ${IP_ADDRESS}:3306:3306
+      - ${IP_ADDRESS}:${MARIADB_PORT:-3306}:${MARIADB_PORT:-3306}
     volumes:
       - ${DATA_PATH_HOST}/mariadb:/var/lib/mysql:delegated
       - mariadb-var-log:/var/log/mysql/
@@ -81,7 +92,6 @@ services:
       - TZ=${TZ:-US/Eastern}
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /var/log:/var/log:ro
       - takp-var-log:/eqemu/var/log
 
   fail2ban-mariadb:
