@@ -1,170 +1,185 @@
 # takp-stack
 
-A Docker Compose stack that builds and runs a [TAKP](https://www.takproject.net/) (The Al'Kabor Project — an EQEmu-based EverQuest "Mac" era emulator) server from source, backed by MariaDB, with fail2ban protecting SSH and the database.
+Run your own [TAKP](https://www.takproject.net/) (The Al'Kabor Project) EverQuest server with a single command.
 
-On first boot the stack clones the EQEmu-derived server source and the TAKP quest/map repos, compiles the server binaries, loads a database dump, and starts all the server processes under `supervisord`. Subsequent boots skip anything already done (source already cloned, binaries already built, database already loaded) unless you tell it to redo that step.
+Setting up an EQEmu server by hand means compiling C++, installing a database, loading data, and wiring up a half-dozen config files. This project does all of that for you inside Docker. You fill in a couple of passwords, start it, and wait. When it's done you have a working Al'Kabor-era server you can log into with the TAKP client.
 
-## Architecture
+It's good for:
 
-| Service | Purpose |
-|---|---|
-| `takp-server` | Compiles (via CMake/Ninja + ccache) and runs the EQEmu server processes: `world`, `queryserv`, `ucs`, four zone launchers, and `loginserver`. Also runs `sshd` so you can get a shell in the build environment. |
-| `mariadb` | The game database (schema `peq` by default). Data persists on the host at `${DATA_PATH_HOST}/mariadb`. |
-| `fail2ban-server` | Watches `takp-server`'s SSH auth log and bans brute-forcers via `iptables` (host network mode). |
-| `fail2ban-mariadb` | Watches MariaDB's auth log the same way. |
+- Playing solo or with a few friends on your own server
+- Poking at the database, quests, or server code without breaking a live server
+- Getting a dev environment for the [EQArchives](https://github.com/EQArchives) server code
 
-Everything is built from Dockerfiles under `containers/`; there are no prebuilt images.
+## What you need
 
-### Volumes and bind mounts
+- A computer running Linux, or Windows/macOS with [Docker Desktop](https://www.docker.com/products/docker-desktop/). An always-on Linux box or a cheap VPS works well if friends will be playing.
+- About 10 GB of free disk space and at least 4 GB of RAM
+- The [TAKP client](https://www.takproject.net/) installed on whatever machine you play from
 
-- `./server` → `/home/eqemu/server` — the live server directory: compiled binaries (symlinked), generated configs (`login.json`, `eqemu_config.json`), logs, quests, maps. This is a bind mount, so you can inspect/edit it from the host. It's gitignored.
-- `./source` → `/home/eqemu/source` — the cloned EQEmu/TAKP server source. Also bind-mounted and gitignored.
-- `build` / `build-cache` — named Docker volumes for the CMake build directory and the ccache cache, so rebuilds are fast and survive container recreation.
-- `./data/mariadb` → MariaDB's data directory (host path controlled by `DATA_PATH_HOST`).
-- `takp-var-log` / `mariadb-var-log` — named volumes sharing each service's `/var/log` with its matching fail2ban sidecar.
+## Quick start
 
-## Prerequisites
+1. **Download this project.**
+   ```bash
+   git clone https://github.com/EQArchives/takp-stack.git
+   cd takp-stack
+   ```
 
-- Docker and Docker Compose v2 (`docker compose ...`)
-- Enough disk space for a full C++ build (the source tree, build artifacts, and ccache can add up to several GB)
-- An SSH public key if you want shell access into the server container
-
-## First-time setup
-
-1. Copy the example environment file and fill in real values:
+2. **Make your settings file.**
    ```bash
    cp .env.example .env
    ```
-   At minimum, set `MARIADB_PASSWORD` and `MARIADB_ROOT_PASSWORD` to real secrets, and set `SSH_AUTHORIZED_KEYS` to your public key (or a `~`-path to it) if you want SSH access to `takp-server`. `.env` is gitignored — never commit it.
+   Open `.env` in a text editor and replace both `<template>` values (`MARIADB_PASSWORD` and `MARIADB_ROOT_PASSWORD`) with passwords of your own. You won't need to type them often, so make them long. Leave everything else alone for now.
 
-2. Build and start everything:
+3. **Start the server.**
    ```bash
    docker compose up -d --build
    ```
 
-3. Watch the first boot, which does a lot of work the first time (clone, build, DB load):
+4. **Wait for it.** The first start downloads the server code, compiles it, and loads the game database. Plan on 15–45 minutes depending on your machine. To watch it work:
    ```bash
    docker compose logs -f takp-server
    ```
+   It's ready once the log stops scrolling and shows `loginserver` starting up. Press `Ctrl+C` to stop watching. The server keeps running.
 
-The first run will take a while — it's cloning three git repos and compiling the entire server with CMake/Ninja. Subsequent starts are fast because the build and ccache volumes persist.
+After that, starts take a few seconds. The server also starts again by itself when your computer reboots.
 
-## Starting and stopping
+## Logging in
 
-```bash
-# Start everything (build images if needed)
-docker compose up -d
+### Point your client at the server
 
-# Stop everything, keep volumes/data
-docker compose down
+In your TAKP client folder, open `eqhost.txt` and change the login server to your server's address:
 
-# Stop and remove containers but also wipe named volumes (build cache, logs) — NOT the ./data or ./server bind mounts
-docker compose down -v
-
-# Restart just the game server (re-runs setup.sh, so it'll re-check source/build/DB state)
-docker compose restart takp-server
-
-# Follow logs for one or all services
-docker compose logs -f takp-server
-docker compose logs -f mariadb
+```
+[LoginServer]
+Host=127.0.0.1:6000
 ```
 
-`takp-server` has `stop_grace_period: 60s` and the zone launchers run with `stopasgroup`/`killasgroup`, so a `docker compose stop` / `down` gives `supervisord` time to signal `world`, the zones, and `loginserver` to shut down and save characters cleanly instead of being killed outright.
+Use `127.0.0.1` if the server is on the same computer you're playing on. Otherwise use the server's IP address, either its LAN IP (like `192.168.1.50`) or its public IP.
 
-### Managing individual processes once the container is running
+Keep a copy of the original `eqhost.txt` so you can switch back to the official TAKP servers later.
 
-Inside the container, the actual game processes (`world`, `queryserv`, `ucs`, the zone launchers, `loginserver`) are managed by `supervisord`, not by Docker directly. To control them individually:
+### Create an account
 
-```bash
-docker compose exec takp-server supervisorctl status
-docker compose exec takp-server supervisorctl restart world
-docker compose exec takp-server supervisorctl restart zones:*   # the launcher group
-docker compose exec takp-server supervisorctl tail -f world
-```
+By default the login server won't create accounts for you. The easiest fix on a private server is to turn on auto-create:
 
-This is useful if, say, a single zone process crashes and you want to bounce it without restarting the whole container (though `autorestart=true` means supervisord will already restart a crashed process on its own).
+1. Open `server/login.json` (you may need `sudo`, since the file is owned by the container) and change `"auto_create_accounts": false` to `true`.
+2. Run `docker compose restart takp-server`.
+3. Log in with any username and password. The account is created the first time you use it.
 
-## What happens on container start (`entrypoint.sh` → `setup.sh`)
+### Make yourself a GM
 
-1. `entrypoint.sh` (as root): writes `~/.ssh/authorized_keys` from `SSH_AUTHORIZED_KEYS`, starts `rsyslogd` and `sshd`, fixes ownership on the bind-mounted/volume directories, then drops to the `eqemu` user to run `setup.sh`.
-2. `setup.sh` (as `eqemu`):
-   - Clones `EQArchives/Server` into `/home/eqemu/source` if not already present; otherwise `git pull`s if `AUTO_PULL=true` (the default).
-   - Generates `server/login.json` and `server/eqemu_config.json` from the source repo's templates on first run only (DB host/user/password/salt filled in from env vars) — these are **not** regenerated on later runs, so manual edits to them persist.
-   - Clones `EQArchives/quests` and `EQMacEmu/Maps` into `server/quests` and `server/maps` (same clone-once/pull-if-`AUTO_PULL` behavior).
-   - Builds the server with CMake + Ninja (using ccache) if `/home/eqemu/build/bin/world` doesn't exist yet, or if `FORCE_RECOMPILE=true`.
-   - Symlinks the compiled binaries and opcode/patch config files into `server/`.
-   - Waits (up to 60s) for MariaDB to accept connections, creates the database if missing, and — only if it has zero tables — extracts and loads the SQL dump from `source/utils/sql/database_full/*.tar.gz`. An already-populated database is left alone.
-   - Runs `shared_memory` once to build the shared-memory item/spell cache.
-3. `entrypoint.sh` then execs `supervisord`, which starts `world`, `queryserv`, `ucs`, the four zone launchers, and finally `loginserver` (delayed 20s so zones are already registering with `world` before players can log in).
-
-## Rebuilding after source changes
-
-If you edit code under `./source` (or just want a clean rebuild):
+After you've logged in once, run this. Replace `yourname` with your account name and `yourpassword` with the `MARIADB_ROOT_PASSWORD` from `.env`.
 
 ```bash
-# One-off forced rebuild on next start
-docker compose run -e FORCE_RECOMPILE=true --rm takp-server
-
-# Or persistently, for this and future starts: set FORCE_RECOMPILE=true in .env, then
-docker compose up -d takp-server
+docker compose exec mariadb mysql -u root -p'yourpassword' peq \
+  -e "UPDATE account SET status = 255 WHERE name = 'yourname';"
 ```
 
-Or just shell in and run the build manually (handy for iterating without going through `setup.sh`'s other checks):
+Log out completely and back in for it to take effect.
 
-```bash
-docker compose exec takp-server bash
-cd /home/eqemu/build && ninja -v
-docker compose restart takp-server   # or supervisorctl restart world/zones:*/etc. to pick up new binaries
-```
+## Playing with friends over the internet
 
-ccache makes incremental rebuilds fast; the cache lives in the `build-cache` named volume and survives `docker compose down` (but not `down -v`).
+To let people connect from outside your home network:
 
-## Ports
+1. **Forward these ports** on your router to the machine running the server:
+   - TCP and UDP `5998`, `6000`, `7000–7030`, `7778`, `9000–9001`
+   - Don't forward `2222` (SSH) or `3307` (database) unless you know you need them.
+2. **Tell the world server its public address.** Open `server/eqemu_config.json`, find the `"world"` section, and set `"address"` to your public IP. Then run `docker compose restart takp-server`.
+3. Have your friends put your public IP in their `eqhost.txt`.
 
-All ports bind to `${IP_ADDRESS}` (default `0.0.0.0`, i.e. all interfaces).
+[fail2ban](https://github.com/fail2ban/fail2ban) runs alongside the server and blocks IPs that keep guessing SSH or database passwords. It's still a good idea to use a firewall and not expose more than you need.
 
-| Port | Protocol | Purpose |
-|---|---|---|
-| 2222 → 22 | TCP | SSH into `takp-server` |
-| 5998 | TCP | Login server (client connects here first) |
-| 6000 | UDP | Login server, legacy/old-client opcode set |
-| 6999 | UDP | Reserved for legacy client compatibility |
-| 7778 | TCP + UDP | Chat/mail (UCS) server |
-| 9000–9001 | TCP + UDP | World server (client handoff) and telnet admin console |
-| `PORT_RANGE_LOW`–`PORT_RANGE_HIGH` (default 7000–7030) | TCP + UDP | Zone server ports — one pair per concurrent zone instance. Raise `PORT_RANGE_HIGH` if you need more zones running simultaneously. |
-| 3307 (host) → 3306 | TCP | MariaDB, exposed on `MARIADB_EXTERNAL_PORT` for external tools (e.g. a SQL client on the host) |
+## Everyday use
 
-## fail2ban
-
-`fail2ban-server` and `fail2ban-mariadb` run with `network_mode: host` and `NET_ADMIN`/`NET_RAW` so they can manipulate `iptables` directly (`DOCKER-USER` chain), banning IPs that fail SSH login or MySQL auth repeatedly (3 and 6 retries respectively, within a 10-minute window, 1-day ban — see `containers/fail2ban-*/jail.local`).
-
-## Key environment variables (`.env`)
-
-| Variable | Notes |
+| To... | Run |
 |---|---|
-| `MARIADB_DATABASE` | Schema name (default `peq`) |
-| `MARIADB_USER` / `MARIADB_PASSWORD` | App DB credentials, written into the generated server configs |
-| `MARIADB_ROOT_PASSWORD` | Used by `setup.sh` to create the database and load the initial dump |
-| `MARIADB_PORT` / `MARIADB_EXTERNAL_PORT` | Internal MariaDB port vs. the host-exposed port |
-| `DATA_PATH_HOST` | Where MariaDB's data directory lives on the host (default `./data`) |
-| `IP_ADDRESS` | Interface to bind published ports to |
-| `SSH_AUTHORIZED_KEYS` | Public key(s) allowed to SSH into `takp-server` as `eqemu` |
-| `PORT_RANGE_LOW` / `PORT_RANGE_HIGH` | Zone port range — determines max concurrent zones |
-| `AUTO_PULL` | `true` (default) pulls latest source/quests/maps on every container start |
-| `FORCE_RECOMPILE` | `true` forces a full rebuild even if binaries already exist |
-| `TZ` | Container timezone |
+| Start the server | `docker compose up -d` |
+| Stop the server (characters are saved) | `docker compose down` |
+| Restart the server | `docker compose restart takp-server` |
+| See what the server is doing | `docker compose logs -f takp-server` |
+| Check that every server process is up | `docker compose exec takp-server supervisorctl status` |
+
+### Updates
+
+Each time the server starts, it pulls the latest server code, quests, and maps. Updated quests and maps take effect on the next restart. If the server code itself changed, you also need to rebuild:
+
+```bash
+docker compose run --rm -e FORCE_RECOMPILE=true takp-server
+docker compose up -d
+```
+
+To stay on your current version, add `AUTO_PULL=false` to `.env`.
+
+Your characters and database are never touched by updates.
+
+### Backups
+
+All your characters, accounts, and world data live in the database. Back it up with:
+
+```bash
+docker compose exec mariadb sh -c 'mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" peq' > backup-$(date +%F).sql
+```
+
+Or stop the server and copy the `data/` folder somewhere safe.
 
 ## Troubleshooting
 
-- **Build fails / takes forever**: check `docker compose logs -f takp-server` during first boot — CMake/Ninja output streams through. A failed build leaves no `build/bin/world`, so it'll retry the full build on next start.
-- **"Can't log in to MariaDB"**: `setup.sh` retries for 60s before giving up — this usually means `MARIADB_ROOT_PASSWORD` in `.env` doesn't match what MariaDB was actually initialized with (it's only set on the *first* `mariadb` container start against an empty `./data/mariadb`). If you need to reset credentials, you generally need to wipe `./data/mariadb` and let it reinitialize — this destroys the database, so back it up first if it matters.
-- **Config changes not taking effect**: `login.json` and `eqemu_config.json` are only generated once; edit them directly under `./server/` and restart the relevant process via `supervisorctl`, or delete them and restart `takp-server` to have `setup.sh` regenerate from env vars.
-- **Players can't log in right after a restart**: `loginserver` intentionally starts ~20s after everything else so zones are registered first; give it a moment.
+**The first start failed partway through.** Look at the end of `docker compose logs takp-server` for the error, fix it, and run `docker compose up -d` again. Finished steps are skipped, so it picks up where it left off.
 
-## Backing up the database
+**"Can't log in to MariaDB."** The database password is set the first time the database starts and never changes after that. If you edited the passwords in `.env` later, they no longer match. Change them back, or, if you have nothing worth keeping, delete the `data/` folder and start over.
+
+**I can't log in right after a restart.** The login server waits about 20 seconds so the zones can come up first. Give it a moment.
+
+**I edited `.env` but my change didn't show up in `server/login.json` or `server/eqemu_config.json`.** Those files are created once on the first start and never overwritten, so your hand edits to them are safe. To pick up new `.env` values, edit the files directly, or delete them and restart to regenerate them.
+
+**Friends can see the server list but get stuck at character select or zoning.** Usually a port forward is missing (check the `7000–7030` range) or the world `address` in `eqemu_config.json` isn't set to your public IP.
+
+---
+
+## For developers
+
+The rest of this is for people who want to work on the server itself.
+
+### What's running
+
+| Service | What it is |
+|---|---|
+| `takp-server` | Builds and runs `world`, `queryserv`, `ucs`, the zone launchers, and `loginserver`, all under `supervisord`. Also runs `sshd` on host port 2222. |
+| `mariadb` | Game database. Exposed on host port 3307 for SQL clients. |
+| `fail2ban-server`, `fail2ban-mariadb` | Watch SSH and MariaDB auth logs and ban through the `DOCKER-USER` iptables chain. |
+
+On boot, `containers/takp-server/setup.sh` checks what's missing and does only that work. Read it if you want the details.
+
+### Where things live
+
+- `source/` holds the [EQArchives/Server](https://github.com/EQArchives/Server) checkout. Edit code here.
+- `server/` is the runtime directory: configs, logs, `quests/`, `maps/`, and symlinks to the built binaries.
+- `data/mariadb/` holds the database files.
+- The CMake build directory and ccache are stored in named Docker volumes (`build`, `build-cache`). They survive `down` but not `down -v`.
+
+### Iterating on server code
 
 ```bash
-docker compose exec mariadb mysqldump -u root -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" > backup.sql
+docker compose exec -u eqemu -w /home/eqemu/build takp-server ninja
+docker compose exec takp-server supervisorctl restart world zones:*
 ```
 
-Or just stop the stack and copy `./data/mariadb` elsewhere.
+ccache keeps incremental builds fast. To SSH in instead of using `exec`, set `SSH_AUTHORIZED_KEYS` in `.env` to your public key and connect with `ssh -p 2222 eqemu@localhost`.
+
+### Settings in `.env`
+
+The defaults are fine for most people. The ones you might change:
+
+| Variable | What it does |
+|---|---|
+| `IP_ADDRESS` | Which network interface the ports listen on. Set it to `127.0.0.1` to keep everything local-only. |
+| `PORT_RANGE_LOW` / `PORT_RANGE_HIGH` | Ports for zones. Raise the high end if you need more zones running at once, and forward the extra ports too. |
+| `AUTO_PULL` | Set to `false` to stop pulling updates on start. |
+| `FORCE_RECOMPILE` | Set to `true` to do a full rebuild on every start. |
+| `SSH_AUTHORIZED_KEYS` | Public key allowed to SSH in as `eqemu`. |
+| `DATA_PATH_HOST` | Where the database files are stored on the host. |
+| `TZ` | Server timezone. |
+
+## License
+
+GPL-3.0. See [LICENSE](LICENSE).

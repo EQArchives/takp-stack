@@ -34,7 +34,7 @@ services:
     environment:
       - CC=${CC:-/usr/bin/gcc}
       - CXX=${CXX:-/usr/bin/g++}
-      - IP_ADDRESSS=${IP_ADDRESS:-127.0.0.1}
+      - IP_ADDRESS=${IP_ADDRESS:-127.0.0.1}
       - PORT_RANGE_HIGH=${PORT_RANGE_HIGH}
       - SSH_AUTHORIZED_KEYS=${SSH_AUTHORIZED_KEYS}
       - TZ=${TZ:-US/Eastern}
