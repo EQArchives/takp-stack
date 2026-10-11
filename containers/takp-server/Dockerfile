@@ -10,8 +10,6 @@ ENV PUID=${PUID}
 ARG PGID=1000
 ENV PGID=${PGID}
 
-ENV TZ=US/Eastern
-
 ENV CC=/usr/bin/gcc
 ENV CXX=/usr/bin/g++
 

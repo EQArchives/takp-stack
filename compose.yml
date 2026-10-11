@@ -11,7 +11,7 @@ volumes:
 services:
 
   takp-server:
-    hostname: ${SERVER_HOSTNAME:-}
+    hostname: ${CONTAINER_HOSTNAME:-takp-server}
     restart: unless-stopped
     build:
       context: ./containers/takp-server
@@ -39,7 +39,7 @@ services:
       - PORT_RANGE_LOW=${PORT_RANGE_LOW:-7000}
       - PORT_RANGE_HIGH=${PORT_RANGE_HIGH:-7030}
       - SSH_AUTHORIZED_KEYS=${SSH_AUTHORIZED_KEYS}
-      - TZ=${TZ:-US/Eastern}
+      - TZ=${TZ:-UTC}
       - CCACHE_DIR=/home/eqemu/.ccache
       - FORCE_RECOMPILE=${FORCE_RECOMPILE:-false}
       - AUTO_PULL=${AUTO_PULL:-true}
@@ -83,7 +83,7 @@ services:
       - MYSQL_USER=${MARIADB_USER}
       - MYSQL_PASSWORD=${MARIADB_PASSWORD}
       - MYSQL_ALLOW_EMPTY_PASSWORD=NO
-      - TZ=${TZ:-US/Eastern}
+      - TZ=${TZ:-UTC}
     networks:
       - backend
     depends_on:
@@ -103,7 +103,7 @@ services:
       - F2B_MAX_RETRY=3
       - F2B_ACTION=%(action_)s
       - F2B_IPTABLES_CHAIN=DOCKER-USER
-      - TZ=${TZ:-US/Eastern}
+      - TZ=${TZ:-UTC}
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - takp-var-log:/eqemu/var/log
@@ -122,7 +122,7 @@ services:
       - F2B_MAX_RETRY=3
       - F2B_ACTION=%(action_)s
       - F2B_IPTABLES_CHAIN=DOCKER-USER
-      - TZ=${TZ:-US/Eastern}
+      - TZ=${TZ:-UTC}
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /var/log:/var/log:ro

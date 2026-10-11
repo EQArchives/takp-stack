@@ -256,7 +256,8 @@ The defaults are fine for most people. The ones you might change:
 | `FORCE_RECOMPILE` | Set to `true` to do a full rebuild on every start. |
 | `SSH_AUTHORIZED_KEYS` | Your SSH *public* key (one line, from a `.pub` file). Empty disables SSH logins. |
 | `DATA_PATH_HOST` | Where the database files are stored on the host. |
-| `TZ` | Server timezone. |
+| `TZ` | Server timezone. Defaults to `UTC`. Use standard names like `America/New_York`; old names like `US/Eastern` don't work. |
+| `CONTAINER_HOSTNAME` | Hostname inside the `takp-server` container, as seen in the shell prompt and logs. Not your server's public name. |
 
 ## License
 
