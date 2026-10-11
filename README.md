@@ -180,6 +180,8 @@ Also keep a copy of `server/login.json`. It holds the password salt for player a
 
 **I edited `.env` but my change didn't show up in `server/login.json` or `server/eqemu_config.json`.** Those files are created once on the first start, so your hand edits to them are safe. The exceptions are the `SERVER_*`, `TELNET_ENABLED` and `PORT_RANGE_*` settings, which are reapplied on every start. For anything else, edit the files directly. Don't delete `login.json` to regenerate it: that changes the password salt and breaks every existing account.
 
+**I'm stuck at "Submitting to World Server" after picking the server.** Check `server/eqemu_config.json`: under `loginserver1`, `legacy` must be `"0"` for the built-in login server. With `"1"`, the login server never hands you off to world. New installs get `"0"` automatically. Change it, then run `docker compose restart takp-server`.
+
 **Some zones can't be entered.** Only the enabled zones are running. See [Running more zones](#running-more-zones).
 
 **Friends can see the server list but get stuck at character select or zoning.** Usually a port forward is missing (check the zone range) or `SERVER_PUBLIC_ADDRESS` in `.env` isn't set to your public IP. If it's players on your home network who are stuck, check `SERVER_LOCAL_ADDRESS` instead.
@@ -255,10 +257,10 @@ By default, world registers with the login server built into this stack, and pla
      "port": "5998",
      "account": "your-server-account",
      "password": "your-server-password",
-     "legacy": "1"
+     "legacy": "0"
    }
    ```
-   Don't add `loginserver2` or `loginserver3`. Keep `legacy` unless the login server's operator tells you otherwise.
+   Don't add `loginserver2` or `loginserver3`. Leave `legacy` at `"0"` unless the login server's operator tells you to use `"1"`.
 2. Run `docker compose restart takp-server`.
 3. Players point `eqhost.txt` at the external login server, not at yours.
 
