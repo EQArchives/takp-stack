@@ -43,7 +43,10 @@ services:
       - AUTO_PULL=${AUTO_PULL:-true}
       - MARIADB_DATABASE=${MARIADB_DATABASE}
       - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+      - MARIADB_USER=${MARIADB_USER}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD}
     tty: true
+    stop_grace_period: 60s
     networks:
       - backend
     cap_add:

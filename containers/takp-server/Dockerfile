@@ -22,40 +22,43 @@ RUN groupadd -g ${PGID} eqemu && \
     bash -c 'mkdir -p /home/eqemu/{source,build,server,.ccache} && chown -R eqemu:eqemu /home/eqemu/{source,build,server,.ccache}'
 
 RUN apt-get update && apt-get install -yqq \
-	bash \
-	ccache \
-        clang \
-	openssh-server \
-	rsyslog \
-	git \
-	gcc \
-	g++ \
-	cpp \
-	unzip \
-	make \
-	cmake \
-    libperl-dev \
-    uuid-dev \
+    bash \
+    build-essential \
+    ccache \
+    clang \
+    cmake \
+    cpp \
     default-libmysqlclient-dev \
-    libmariadbd-dev \
-    libmysql++-dev \
-    mariadb-server \
-    mariadb-client \
+    g++ \
+    gcc \
+    git \
+    gosu \
+    jq \
     libboost-all-dev \
+    libcurl4-openssl-dev \
+    libio-stringy-perl \
     liblua5.2-0 \
     liblua5.2-dev \
     libluabind-dev \
-    lua5.2 \
-    build-essential \
+    libmariadbd-dev \
+    libmysql++-dev \
+    libperl-dev \
     libssl-dev \
-    openssl \
-    libcurl4-openssl-dev \
-    libio-stringy-perl \
+    lua5.2 \
+    make \
+    mariadb-client \
+    mariadb-server \
     ninja-build \
-    valgrind \
+    openssh-server \
+    openssl \
+    rsyslog \
     ruby \
     ruby-dev \
+    supervisor \
     universal-ctags \
+    unzip \
+    uuid-dev \
+    valgrind \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /var/run/sshd && \
@@ -68,6 +71,7 @@ RUN mkdir -p /var/run/sshd && \
 
 COPY --chmod=755 entrypoint.sh /home/eqemu/entrypoint.sh
 COPY --chmod=755 setup.sh /home/eqemu/setup.sh
+COPY --chmod=644 supervisord.conf /home/eqemu/supervisord.conf
 
 ENTRYPOINT ["/home/eqemu/entrypoint.sh"]
 

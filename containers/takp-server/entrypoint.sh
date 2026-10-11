@@ -16,4 +16,5 @@ rsyslogd
 /usr/sbin/sshd
 
 chown -R eqemu:eqemu /home/eqemu/source /home/eqemu/server /home/eqemu/build /home/eqemu/.ccache
-exec su -s /bin/bash eqemu /home/eqemu/setup.sh
+gosu eqemu /home/eqemu/setup.sh
+exec supervisord -n -c /home/eqemu/supervisord.conf

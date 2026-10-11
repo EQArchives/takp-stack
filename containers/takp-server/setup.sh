@@ -1,7 +1,13 @@
 #!/bin/bash
 set -e
 
+: "${MARIADB_DATABASE:?MARIADB_DATABASE is not set}"
+: "${MARIADB_USER:?MARIADB_USER is not set}"
+: "${MARIADB_PASSWORD:?MARIADB_PASSWORD is not set}"
+: "${MARIADB_ROOT_PASSWORD:?MARIADB_ROOT_PASSWORD is not set}"
+
 # Do app work that doesn't require root permissions
+# ---- Source ----
 if [ ! -d "/home/eqemu/source/.git" ]; then
   git clone https://github.com/EQArchives/Server.git /home/eqemu/source
 else
@@ -10,30 +16,44 @@ else
   fi
 fi
 
+# ---- Config files (generated once, then left alone) ----
 if [ ! -f "/home/eqemu/server/login.json" ]; then
-  cp /home/eqemu/source/loginserver/login_util/login.json /home/eqemu/server/login.json
+  salt=$(openssl rand -hex 32)
+  jq --arg db "$MARIADB_DATABASE" --arg user "$MARIADB_USER" \
+    --arg pass "$MARIADB_PASSWORD" --arg salt "$salt" '
+      .database.host = "mariadb" | .database.db = $db |
+      .database.user = $user | .database.password = $pass | .database.salt = $salt |
+      .logsys_database.host = "mariadb" | .logsys_database.db = $db |
+      .logsys_database.user = $user | .logsys_database.password = $pass
+  ' /home/eqemu/source/loginserver/login_util/login.json >/home/eqemu/server/login.json
+  chmod 600 /home/eqemu/server/login.json
 fi
 
 if [ ! -f "/home/eqemu/server/eqemu_config.json" ]; then
-  cp /home/eqemu/source/utils/defaults/eqemu_config.json /home/eqemu/server/eqemu_config.json
+  jq --arg db "$MARIADB_DATABASE" --arg user "$MARIADB_USER" --arg pass "$MARIADB_PASSWORD" '
+        .server.database.host = "mariadb" | .server.database.db = $db |
+        .server.database.username = $user | .server.database.password = $pass
+        .server.world.loginserver1.host = "127.0.0.1" |
+        .server.world.loginserver1.account = "" |
+        .server.world.loginserver1.password = ""
+    ' /home/eqemu/source/utils/defaults/eqemu_config.json >/home/eqemu/server/eqemu_config.json
+  chmod 600 /home/eqemu/server/eqemu_config.json
 fi
 
+# ---- Quests and Maps ----
 if [ ! -d "/home/eqemu/server/quests/.git" ]; then
   git clone https://github.com/EQArchives/quests.git /home/eqemu/server/quests
-else
-  if [ "${AUTO_PULL:-true}" = "true" ]; then
-    cd /home/eqemu/server/quests && git pull
-  fi
+elif [ "${AUTO_PULL:-true}" = "true" ]; then
+  cd /home/eqemu/server/quests && git pull
 fi
 
 if [ ! -d "/home/eqemu/server/maps/.git" ]; then
   git clone https://github.com/EQMacEmu/Maps.git /home/eqemu/server/maps
-else
-  if [ "${AUTO_PULL:-true}" = "true" ]; then
-    cd /home/eqemu/server/maps && git pull
-  fi
+elif [ "${AUTO_PULL:-true}" = "true" ]; then
+  cd /home/eqemu/server/maps && git pull
 fi
 
+# ---- Build ----
 if [ ! -f "/home/eqemu/build/bin/world" ] || [ "${FORCE_RECOMPILE:-false}" = "true" ]; then
   mkdir -p /home/eqemu/build
   cd /home/eqemu/build
@@ -47,29 +67,22 @@ if [ ! -f "/home/eqemu/build/bin/world" ] || [ "${FORCE_RECOMPILE:-false}" = "tr
   ninja -v
 fi
 
+# ---- Server directory layout ----
 mkdir -p /home/eqemu/server/shared/
 mkdir -p /home/eqemu/server/logs/
+mkdir -p /home/eqemu/server/assets/opcodes/
+mkdir -p /home/eqemu/server/assets/patches/
 
-mkdir -p /home/eqemu/server/opcodes/
-ln -sf /home/eqemu/source/utils/patches/chat_opcodes.conf /home/eqemu/server/opcodes/chat_opcodes.conf
-ln -sf /home/eqemu/source/utils/patches/opcodes.conf /home/eqemu/server/opcodes/opcodes.conf
-ln -sf /home/eqemu/source/utils/patches/patch_Mac.conf /home/eqemu/server/opcodes/patch_Mac.conf
+ln -sf /home/eqemu/source/utils/patches/chat_opcodes.conf /home/eqemu/server/assets/opcodes/chat_opcodes.conf
+ln -sf /home/eqemu/source/utils/patches/opcodes.conf /home/eqemu/server/assets/opcodes/opcodes.conf
+ln -sf /home/eqemu/source/loginserver/login_util/login_opcodes*.conf /home/eqemu/server/assets/opcodes/
+ln -sf /home/eqemu/source/utils/patches/patch_Mac.conf /home/eqemu/server/assets/patches/patch_Mac.conf
 
-ln -sf /home/eqemu/source/utils/patches/patch_Mac.conf /home/eqemu/server/patch_Mac.conf
-ln -sf /home/eqemu/build/bin/eqlaunch /home/eqemu/server/eqlaunch
-ln -sf /home/eqemu/build/bin/libcommon.a /home/eqemu/server/libcommon.a
-ln -sf /home/eqemu/build/bin/libluabind.a /home/eqemu/server/libluabind.a
-ln -sf /home/eqemu/build/bin/loginserver /home/eqemu/server/loginserver
-ln -sf /home/eqemu/build/bin/queryserv /home/eqemu/server/queryserv
-ln -sf /home/eqemu/build/bin/shared_memory /home/eqemu/server/shared_memory
-ln -sf /home/eqemu/build/bin/ucs /home/eqemu/server/ucs
-ln -sf /home/eqemu/build/bin/world /home/eqemu/server/world
-ln -sf /home/eqemu/build/bin/zone /home/eqemu/server/zone
+for bin in eqlaunch libcommon.a libluabind.a loginserver queryserv shared_memory ucs world zone; do
+  ln -sf "/home/eqemu/build/bin/$bin" "/home/eqemu/server/$bin"
+done
 
 # ---- Database ----
-: "${MARIADB_DATABASE:?MARIADB_DATABASE is not set}"
-: "${MARIADB_ROOT_PASSWORD:?MARIADB_ROOT_PASSWORD is not set}"
-
 DB_NAME="$MARIADB_DATABASE"
 export MYSQL_PWD="$MARIADB_ROOT_PASSWORD"
 MYSQL="mysql --skip-ssl -h mariadb -u root"
@@ -108,4 +121,5 @@ else
   echo "$DB_NAME already has $tables tables, skipping load."
 fi
 
-exec tail -f /dev/null
+cd /home/eqemu/server
+./shared_memory
