@@ -41,6 +41,8 @@ services:
       - CCACHE_DIR=/home/eqemu/.ccache
       - FORCE_RECOMPILE=${FORCE_RECOMPILE:-false}
       - AUTO_PULL=${AUTO_PULL:-true}
+      - MARIADB_DATABASE=${MARIADB_DATABASE}
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
     tty: true
     networks:
       - backend
@@ -51,6 +53,7 @@ services:
       - SYS_PTRACE
     depends_on:
       - fail2ban-server
+      - mariadb
 
   mariadb:
     restart: unless-stopped
@@ -60,7 +63,7 @@ services:
         - INNODB_BUFFER_POOL_SIZE=${INNODB_BUFFER_POOL_SIZE:-256MB}
         - MARIADB_PORT=${MARIADB_PORT:-3306}
     ports:
-      - ${IP_ADDRESS}:${MARIADB_PORT:-3306}:${MARIADB_PORT:-3306}
+      - ${IP_ADDRESS}:${MARIADB_EXTERNAL_PORT:-3307}:${MARIADB_PORT:-3306}
     volumes:
       - ${DATA_PATH_HOST}/mariadb:/var/lib/mysql:delegated
       - mariadb-var-log:/var/log/mysql/

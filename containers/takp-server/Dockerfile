@@ -15,9 +15,11 @@ ENV TZ=US/Eastern
 ENV CC=/usr/bin/gcc
 ENV CXX=/usr/bin/g++
 
+# /bin/sh doesn't support brace expansion; explicit bash required
 RUN groupadd -g ${PGID} eqemu && \
     useradd -u ${PUID} -g eqemu -m eqemu -G eqemu && \
-    usermod -p "*" eqemu
+    usermod -p "*" eqemu && \
+    bash -c 'mkdir -p /home/eqemu/{source,build,server,.ccache} && chown -R eqemu:eqemu /home/eqemu/{source,build,server,.ccache}'
 
 RUN apt-get update && apt-get install -yqq \
 	bash \
@@ -61,15 +63,11 @@ RUN mkdir -p /var/run/sshd && \
     mkdir -p /etc/ssh/sshd_config.d && \
     printf 'PermitRootLogin no\nPasswordAuthentication no\nPubkeyAuthentication yes\n' \
         > /etc/ssh/sshd_config.d/00-hardening.conf && \
-    printf 'auth,authpriv.* /var/log/auth.log\n' > /etc/rsyslog.d/50-auth.conf
+    printf 'auth,authpriv.* /var/log/auth.log\n' > /etc/rsyslog.d/50-auth.conf && \
+    sed -i '/imklog/d' /etc/rsyslog.conf
 
-RUN bash -c 'mkdir -p /home/eqemu/{source,build,server} && chown -R eqemu:eqemu /home/eqemu/{source,build,server}'
-
-COPY entrypoint.sh /home/eqemu/entrypoint.sh
-COPY setup.sh /home/eqemu/setup.sh
-
-RUN chmod +x /home/eqemu/entrypoint.sh && \
-    chmod +x /home/eqemu/setup.sh
+COPY --chmod=755 entrypoint.sh /home/eqemu/entrypoint.sh
+COPY --chmod=755 setup.sh /home/eqemu/setup.sh
 
 ENTRYPOINT ["/home/eqemu/entrypoint.sh"]
 
