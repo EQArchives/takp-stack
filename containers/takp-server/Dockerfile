@@ -46,6 +46,7 @@ RUN apt-get update && apt-get install -yqq \
     make \
     mariadb-client \
     mariadb-server \
+    nano \
     ninja-build \
     openssh-server \
     openssl \
@@ -57,6 +58,7 @@ RUN apt-get update && apt-get install -yqq \
     unzip \
     uuid-dev \
     valgrind \
+    vim-tiny \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /var/run/sshd && \

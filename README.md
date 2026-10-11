@@ -66,7 +66,7 @@ There's no simple way to create accounts yet. A command for it is planned.
 
 In the meantime, you can turn on auto-create:
 
-1. Open `server/login.json` (you may need `sudo`, since the file is owned by the container) and change `"auto_create_accounts": false` to `true`.
+1. Open `server/login.json` (see [Editing config files](#editing-config-files)) and change `"auto_create_accounts": false` to `true`.
 2. Run `docker compose restart takp-server`.
 3. Log in with any username and password. The account is created the first time you use it.
 
@@ -134,6 +134,27 @@ Out of the box, 30 zones run all the time: the boat docks plus a set of popular 
 3. Run `docker compose up -d`, and forward the larger range on your router.
 
 Each zone uses memory even when nobody is in it, so add zones in batches and keep an eye on your machine.
+
+### Editing config files
+
+Server settings that aren't in `.env` live in two files in the `server/` folder: `eqemu_config.json` (the game server) and `login.json` (the login server).
+
+The surest way to edit them, on any setup, is through the container. Use `nano` if you're not sure which to pick:
+
+```bash
+docker compose exec -u eqemu -w /home/eqemu/server takp-server nano login.json
+docker compose exec -u eqemu -w /home/eqemu/server takp-server vi login.json
+```
+
+In nano, save with `Ctrl+O` and exit with `Ctrl+X`. Then run `docker compose restart takp-server`.
+
+You can also open the files in your own text editor:
+
+- **Docker Desktop (Mac or Windows):** works as is.
+- **Linux:** set `PUID` and `PGID` in `.env` to the output of `id -u` and `id -g`, then run `docker compose up -d --build`. The files will then be owned by you. If your IDs are 1000, the defaults already match.
+- **Rootless Docker:** the files show up as owned by a high-numbered user (like `100999`) and `PUID` can't change that. Use the commands above, or `sudo`.
+
+If the server won't start after an edit, see [Troubleshooting](#troubleshooting).
 
 ### Backups
 
@@ -227,7 +248,7 @@ By default, world registers with the login server built into this stack, and pla
 
 **Decide this before anyone plays.** World can only use one login server, and switching later breaks accounts. Account IDs aren't unique across login servers, so an account from the new login server can end up attached to an existing player's characters.
 
-1. Edit `server/eqemu_config.json` (you may need `sudo`) and set the `loginserver1` block under `world`:
+1. Edit `server/eqemu_config.json` (see [Editing config files](#editing-config-files)) and set the `loginserver1` block under `world`:
    ```json
    "loginserver1": {
      "host": "login.example.com",
@@ -260,6 +281,7 @@ The defaults are fine for most people. The ones you might change:
 | `FORCE_RECOMPILE` | Set to `true` to do a full rebuild on every start. |
 | `SSH_AUTHORIZED_KEYS` | Your SSH *public* key (one line, from a `.pub` file). Empty disables SSH logins. |
 | `DATA_PATH_HOST` | Where the database files are stored on the host. |
+| `PUID` / `PGID` | User and group IDs that own `server/` and `source/` on the host. See [Editing config files](#editing-config-files). |
 | `TZ` | Server timezone. Defaults to `UTC`. Use standard names like `America/New_York`; old names like `US/Eastern` don't work. |
 | `CONTAINER_HOSTNAME` | Hostname inside the `takp-server` container, as seen in the shell prompt and logs. Not your server's public name. |
 

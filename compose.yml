@@ -15,6 +15,9 @@ services:
     restart: unless-stopped
     build:
       context: ./containers/takp-server
+      args:
+        - PUID=${PUID:-1000}
+        - PGID=${PGID:-1000}
     volumes:
       - ./server:/home/eqemu/server:delegated
       - ./source:/home/eqemu/source:delegated
