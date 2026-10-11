@@ -69,11 +69,9 @@ RUN mkdir -p /var/run/sshd && \
     printf 'auth,authpriv.* /var/log/auth.log\n' > /etc/rsyslog.d/50-auth.conf && \
     sed -i '/imklog/d' /etc/rsyslog.conf
 
-COPY --chmod=755 entrypoint.sh /home/eqemu/entrypoint.sh
-COPY --chmod=755 setup.sh /home/eqemu/setup.sh
-COPY --chmod=644 supervisord.conf /home/eqemu/supervisord.conf
-COPY --chmod=644 default_zones.sql /home/eqemu/default_zones.sql
-COPY --chmod=755 start-loginserver.sh /home/eqemu/start-loginserver.sh
+COPY --chmod=755 bin/ /usr/local/bin/
+COPY --chmod=755 scripts/ /home/eqemu/
+COPY --chmod=644 conf/ /home/eqemu/
 
 ENTRYPOINT ["/home/eqemu/entrypoint.sh"]
 

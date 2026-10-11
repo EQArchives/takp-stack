@@ -1,0 +1,47 @@
+#!/bin/bash
+# Create a login server account
+# Usage: docker compose exec takp-server create-account [name]
+set -euo pipefail
+
+die() {
+  echo "Error: $*" >&2
+  exit 1
+}
+
+export MYSQL_PWD="$MARIADB_PASSWORD"
+sql() { mysql --skip-ssl -h mariadb -u "$MARIADB_USER" -N "$MARIADB_DATABASE" -e "$1"; }
+
+# Account name: from the argument, or ask
+name=${1:-}
+[ -n "$name" ] || read -r -p "Account name: " name
+name_re='^[A-Za-z0-9]{1,30}$'
+[[ $name =~ $name_re ]] || die "account names are 1-30 letters and digits"
+
+taken=$(sql "SELECT COUNT(*) FROM tblLoginServerAccounts WHERE AccountName = '$name'")
+[ "$taken" -eq 0 ] || die "account $name already exists"
+
+# Forum name: Enter keeps the default
+read -r -p "Forum name ($name): " forum
+forum=${forum:-$name}
+forum_re='^[A-Za-z0-9_. -]{1,30}$'
+[[ $forum =~ $forum_re ]] || die "forum names are 1-30 letters, digits, spaces, and _ . -"
+
+# Password: hidden, asked twice
+read -rs -p "Password: " pw
+echo
+[ -n "$pw" ] || die "password can't be empty"
+read -rs -p "Password again: " pw2
+echo
+[ "$pw" = "$pw2" ] || die "passwords don't match"
+
+# Same hash the login server uses: SHA1 of password + salt from login.json
+salt=$(jq -r '.database.salt // ""' /home/eqemu/server/login.json)
+hash=$(printf '%s%s' "$pw" "$salt" | sha1sum | cut -d' ' -f1)
+
+sql "INSERT INTO tblLoginServerAccounts
+  (AccountName, AccountPassword, AccountEmail, ForumName,
+   LastLoginDate, LastIPAddress, creationIP)
+  VALUES ('$name', '$hash', 'local_creation', '$forum',
+   NOW(), '127.0.0.1', '127.0.0.1')"
+
+echo "Account $name created. Log in with the TAKP client."
