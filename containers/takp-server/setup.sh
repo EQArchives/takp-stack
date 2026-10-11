@@ -25,7 +25,7 @@ if [ ! -f "/home/eqemu/server/login.json" ]; then
       .database.user = $user | .database.password = $pass | .database.salt = $salt |
       .logsys_database.host = "mariadb" | .logsys_database.db = $db |
       .logsys_database.user = $user | .logsys_database.password = $pass
-  ' /home/eqemu/source/loginserver/login_util/login.json >/home/eqemu/server/login.json
+    ' /home/eqemu/source/loginserver/login_util/login.json >/home/eqemu/server/login.json
   chmod 600 /home/eqemu/server/login.json
 fi
 
