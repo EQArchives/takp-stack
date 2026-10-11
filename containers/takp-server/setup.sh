@@ -178,6 +178,11 @@ if [ "$has_ls_settings" -eq 0 ]; then
 	echo "Loading tblloginserversettings..."
 	$MYSQL "$DB_NAME" </home/eqemu/source/loginserver/login_util/tblloginserversettings.sql
 fi
+list_types=$($MYSQL -N -e "SELECT COUNT(*) FROM \`$DB_NAME\`.tblServerListType" 2>/dev/null || echo 0)
+if [ "$list_types" -eq 0 ]; then
+	echo "Loading tblServerListType..."
+	$MYSQL "$DB_NAME" </home/eqemu/source/loginserver/login_util/tblServerListType.sql
+fi
 
 cd /home/eqemu/server
 ./shared_memory
