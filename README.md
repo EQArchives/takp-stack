@@ -151,7 +151,7 @@ Or stop the server and copy the `data/` folder somewhere safe.
 
 **"Can't log in to MariaDB."** The database password is set the first time the database starts and never changes after that. If you edited the passwords in `.env` later, they no longer match. Change them back, or, if you have nothing worth keeping, delete the `data/` folder and start over.
 
-**I can't log in right after a restart.** The login server waits about 20 seconds so the zones can come up first. Give it a moment.
+**I can't log in right after a restart.** The login server waits until all enabled zones are up, which can take a minute or two. Check `docker compose logs takp-server | grep "loginserver:"` to see how far along it is.
 
 **I edited `.env` but my change didn't show up in `server/login.json` or `server/eqemu_config.json`.** Those files are created once on the first start, so your hand edits to them are safe. The exceptions are the `SERVER_*`, `TELNET_ENABLED` and `PORT_RANGE_*` settings, which are reapplied on every start. For anything else, edit the files directly, or delete them and run `docker compose up -d` to regenerate them.
 
