@@ -81,7 +81,7 @@ Log out completely and back in for it to take effect.
 
 To let people connect from outside your home network:
 
-1. **Forward these UDP ports** on your router to the machine running the server: `6000`, `7778`, `9000`, and the zone range (`PORT_RANGE_LOW`–`PORT_RANGE_HIGH` in `.env`). No TCP ports are needed.
+1. **Forward these UDP ports** on your router to the machine running the server: `6000`, `7778`, `9000`, and the zone range (`7000–7030` unless you've changed `PORT_RANGE_LOW`/`PORT_RANGE_HIGH` in `.env`). No TCP ports are needed.
 2. **Tell the world server its public address.** Open `server/eqemu_config.json`, find the `"world"` section, and set `"address"` to your public IP. Then run `docker compose restart takp-server`.
 3. Have your friends put your public IP in their `eqhost.txt`.
 
@@ -110,6 +110,26 @@ To stay on your current version, add `AUTO_PULL=false` to `.env`.
 
 Your characters and database are never touched by updates.
 
+### Running more zones
+
+Out of the box, 30 zones run all the time: the boat docks plus a set of popular zones. That keeps memory use reasonable on a small machine, but any zone not in the set can't be entered. To run more:
+
+1. Turn the zones on in the database. This example turns on every zone up through Velious:
+   ```bash
+   docker compose exec mariadb sh -c 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" peq \
+     -e "UPDATE launcher_zones SET enabled = 1 WHERE expansion IN (\"classic\", \"kunark\", \"velious\");"'
+   ```
+2. Make sure there are more zone ports than running zones. Count the running zones with:
+   ```bash
+   docker compose exec mariadb sh -c 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" peq \
+     -N -e "SELECT COUNT(*) FROM launcher_zones WHERE enabled = 1;"'
+   ```
+   Then raise `PORT_RANGE_HIGH` in `.env` so `PORT_RANGE_HIGH − PORT_RANGE_LOW + 1` is larger than that number.
+3. Also update `zones.ports.high` in `server/eqemu_config.json` to match. That file is only generated on the first start.
+4. Run `docker compose up -d --force-recreate takp-server`, and forward the larger range on your router.
+
+Each zone uses memory even when nobody is in it, so add zones in batches and keep an eye on your machine.
+
 ### Backups
 
 All your characters, accounts, and world data live in the database. Back it up with:
@@ -130,7 +150,9 @@ Or stop the server and copy the `data/` folder somewhere safe.
 
 **I edited `.env` but my change didn't show up in `server/login.json` or `server/eqemu_config.json`.** Those files are created once on the first start and never overwritten, so your hand edits to them are safe. To pick up new `.env` values, edit the files directly, or delete them and restart to regenerate them.
 
-**Friends can see the server list but get stuck at character select or zoning.** Usually a port forward is missing (check the `7000–7030` range) or the world `address` in `eqemu_config.json` isn't set to your public IP.
+**Some zones can't be entered.** Only the enabled zones are running. See [Running more zones](#running-more-zones).
+
+**Friends can see the server list but get stuck at character select or zoning.** Usually a port forward is missing (check the zone range) or the world `address` in `eqemu_config.json` isn't set to your public IP.
 
 ---
 
@@ -157,7 +179,7 @@ Player ports listen on `IP_ADDRESS` (all interfaces by default). Everything else
 | 6000/udp | Login server (client login) | `IP_ADDRESS` |
 | 9000/udp | World (character select) | `IP_ADDRESS` |
 | 7778/udp | UCS (chat and mail) | `IP_ADDRESS` |
-| zone range/udp | Zones | `IP_ADDRESS` |
+| 7000–7030/udp | Zones (`PORT_RANGE_LOW`–`PORT_RANGE_HIGH`) | `IP_ADDRESS` |
 | 2222/tcp | SSH into `takp-server` | `SSH_BIND` |
 | 3307/tcp | MariaDB | `MARIADB_BIND` |
 | 5998/tcp | Login server: world server registration | `LOGIN_TCP_BIND` |
@@ -188,7 +210,7 @@ docker compose exec -u eqemu -w /home/eqemu/build takp-server ninja
 docker compose exec takp-server supervisorctl restart world zones:*
 ```
 
-ccache keeps incremental builds fast. To SSH in instead of using `exec`, set `SSH_AUTHORIZED_KEYS` in `.env` to your public key and connect with `ssh -p 2222 eqemu@localhost`.
+ccache keeps incremental builds fast. To SSH in instead of using `exec`, paste your public key (the one line in `~/.ssh/id_ed25519.pub` or similar) into `SSH_AUTHORIZED_KEYS` in `.env`, run `docker compose up -d`, and connect with `ssh -p 2222 eqemu@localhost`. SSH only accepts connections from the server machine unless you change `SSH_BIND`.
 
 ### Settings in `.env`
 
@@ -199,10 +221,10 @@ The defaults are fine for most people. The ones you might change:
 | `IP_ADDRESS` | Which network interface the player ports listen on. Set it to `127.0.0.1` to keep the game local-only. |
 | `*_BIND` | Which interface each admin/developer port listens on. See [Ports](#ports). |
 | `TELNET_ENABLED` | Set to `true` to turn on the world telnet console. |
-| `PORT_RANGE_LOW` / `PORT_RANGE_HIGH` | Ports for zones. Raise the high end if you need more zones running at once, and forward the extra ports too. |
+| `PORT_RANGE_LOW` / `PORT_RANGE_HIGH` | Ports world hands out to zones, also published to players. Must be larger than the number of enabled zones. See [Running more zones](#running-more-zones). |
 | `AUTO_PULL` | Set to `false` to stop pulling updates on start. |
 | `FORCE_RECOMPILE` | Set to `true` to do a full rebuild on every start. |
-| `SSH_AUTHORIZED_KEYS` | Public key allowed to SSH in as `eqemu`. |
+| `SSH_AUTHORIZED_KEYS` | Your SSH *public* key (one line, from a `.pub` file). Empty disables SSH logins. |
 | `DATA_PATH_HOST` | Where the database files are stored on the host. |
 | `TZ` | Server timezone. |
 

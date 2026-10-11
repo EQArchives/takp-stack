@@ -36,7 +36,8 @@ services:
       - CC=${CC:-/usr/bin/gcc}
       - CXX=${CXX:-/usr/bin/g++}
       - IP_ADDRESS=${IP_ADDRESS:-127.0.0.1}
-      - PORT_RANGE_HIGH=${PORT_RANGE_HIGH}
+      - PORT_RANGE_LOW=${PORT_RANGE_LOW:-7000}
+      - PORT_RANGE_HIGH=${PORT_RANGE_HIGH:-7030}
       - SSH_AUTHORIZED_KEYS=${SSH_AUTHORIZED_KEYS}
       - TZ=${TZ:-US/Eastern}
       - CCACHE_DIR=/home/eqemu/.ccache

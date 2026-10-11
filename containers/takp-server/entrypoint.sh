@@ -8,6 +8,8 @@ if [ -n "${SSH_AUTHORIZED_KEYS}" ]; then
   chmod 700 /home/eqemu/.ssh
   chmod 600 /home/eqemu/.ssh/authorized_keys
   chown -R eqemu:eqemu /home/eqemu/.ssh
+else
+  rm -f /home/eqemu/.ssh/authorized_keys
 fi
 
 # Ensure auth.log exists before rsyslog/sshd start (fail2ban watches this)

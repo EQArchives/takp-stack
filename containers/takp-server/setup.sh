@@ -34,9 +34,14 @@ if [ ! -f "/home/eqemu/server/eqemu_config.json" ]; then
   tmp=$(mktemp)
   jq --arg db "$MARIADB_DATABASE" --arg user "$MARIADB_USER" --arg pass "$MARIADB_PASSWORD" \
     --arg telnet "${TELNET_ENABLED:-false}" \
-    --arg key "$world_key" '
+    --arg key "$world_key" \
+    --arg plow "${PORT_RANGE_LOW:-7000}" \
+    --arg phigh "${PORT_RANGE_HIGH:-7030}" \
+    '
         .server.world.key = $key |
         .server.world.telnet.enabled = $telnet |
+        .server.zones.ports.low = $plow |
+        .server.zones.ports.high = $phigh |
         .server.database.host = "mariadb" | .server.database.db = $db |
         .server.database.username = $user | .server.database.password = $pass |
         .server.qsdatabase.host = "mariadb" | .server.qsdatabase.db = $db |
@@ -126,6 +131,8 @@ if [ "$tables" -eq 0 ]; then
       $MYSQL "$DB_NAME" <"$f"
     done
   done
+  echo "Applying default zone set..."
+  $MYSQL "$DB_NAME" </home/eqemu/default_zones.sql
   rm -rf "$tmp"
 else
   echo "$DB_NAME already has $tables tables, skipping load."

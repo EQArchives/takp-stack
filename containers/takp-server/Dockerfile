@@ -72,6 +72,7 @@ RUN mkdir -p /var/run/sshd && \
 COPY --chmod=755 entrypoint.sh /home/eqemu/entrypoint.sh
 COPY --chmod=755 setup.sh /home/eqemu/setup.sh
 COPY --chmod=644 supervisord.conf /home/eqemu/supervisord.conf
+COPY --chmod=644 default_zones.sql /home/eqemu/default_zones.sql
 
 ENTRYPOINT ["/home/eqemu/entrypoint.sh"]
 
