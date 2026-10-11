@@ -30,13 +30,18 @@ if [ ! -f "/home/eqemu/server/login.json" ]; then
 fi
 
 if [ ! -f "/home/eqemu/server/eqemu_config.json" ]; then
+  tmp=$(mktemp)
   jq --arg db "$MARIADB_DATABASE" --arg user "$MARIADB_USER" --arg pass "$MARIADB_PASSWORD" '
         .server.database.host = "mariadb" | .server.database.db = $db |
-        .server.database.username = $user | .server.database.password = $pass
+        .server.database.username = $user | .server.database.password = $pass |
+        .server.qsdatabase.host = "mariadb" | .server.qsdatabase.db = $db |
+        .server.qsdatabase.username = $user | .server.qsdatabase.password = $pass |
         .server.world.loginserver1.host = "127.0.0.1" |
         .server.world.loginserver1.account = "" |
-        .server.world.loginserver1.password = ""
-    ' /home/eqemu/source/utils/defaults/eqemu_config.json >/home/eqemu/server/eqemu_config.json
+        .server.world.loginserver1.password = "" |
+        del(.server.world.loginserver2, .server.world.loginserver3)
+    ' /home/eqemu/source/utils/defaults/eqemu_config.json >"$tmp"
+  mv "$tmp" /home/eqemu/server/eqemu_config.json
   chmod 600 /home/eqemu/server/eqemu_config.json
 fi
 
@@ -119,6 +124,11 @@ if [ "$tables" -eq 0 ]; then
   rm -rf "$tmp"
 else
   echo "$DB_NAME already has $tables tables, skipping load."
+fi
+has_ls_settings=$($MYSQL -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME' AND table_name='tblloginserversettings'")
+if [ "$has_ls_settings" -eq 0 ]; then
+  echo "Loading tblloginserversettings..."
+  $MYSQL "$DB_NAME" </home/eqemu/source/loginserver/login_util/tblloginserversettings.sql
 fi
 
 cd /home/eqemu/server
