@@ -62,23 +62,21 @@ Keep a copy of the original `eqhost.txt` so you can switch back to the official 
 
 ### Create an account
 
-There's no simple way to create accounts yet. A command for it is planned.
+```bash
+docker compose exec takp-server create-account yourname
+```
 
-In the meantime, you can turn on auto-create:
+It asks for a forum name (press Enter to use the account name) and a password, typed twice. The password isn't shown as you type. Account names are letters and digits only, up to 30 characters.
 
-1. Open `server/login.json` (see [Editing config files](#editing-config-files)) and change `"auto_create_accounts": false` to `true`.
-2. Run `docker compose restart takp-server`.
-3. Log in with any username and password. The account is created the first time you use it.
-
-> **Heads up:** accounts made this way are created with a blank forum ID, which can cause problems later. Fine for trying things out. For a server other people will play on, wait for the account command.
+Then log in with the TAKP client using that name and password.
 
 ### Make yourself a GM
 
-After you've logged in once, run this. Replace `yourname` with your account name and `yourpassword` with the `MARIADB_ROOT_PASSWORD` from `.env`.
+Log in once and go as far as character select, so the server creates your in-game account. Then run this, replacing `yourname` with your account name:
 
 ```bash
-docker compose exec mariadb mysql -u root -p'yourpassword' peq \
-  -e "UPDATE account SET status = 255 WHERE name = 'yourname';"
+docker compose exec mariadb sh -c 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" \
+  -e "UPDATE account SET status = 255 WHERE name = \"yourname\";"'
 ```
 
 Log out completely and back in for it to take effect.
