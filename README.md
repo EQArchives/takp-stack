@@ -81,13 +81,11 @@ Log out completely and back in for it to take effect.
 
 To let people connect from outside your home network:
 
-1. **Forward these ports** on your router to the machine running the server:
-   - TCP and UDP `5998`, `6000`, `7000–7030`, `7778`, `9000–9001`
-   - Don't forward `2222` (SSH) or `3307` (database) unless you know you need them.
+1. **Forward these UDP ports** on your router to the machine running the server: `6000`, `7778`, `9000`, and the zone range (`PORT_RANGE_LOW`–`PORT_RANGE_HIGH` in `.env`). No TCP ports are needed.
 2. **Tell the world server its public address.** Open `server/eqemu_config.json`, find the `"world"` section, and set `"address"` to your public IP. Then run `docker compose restart takp-server`.
 3. Have your friends put your public IP in their `eqhost.txt`.
 
-[fail2ban](https://github.com/fail2ban/fail2ban) runs alongside the server and blocks IPs that keep guessing SSH or database passwords. It's still a good idea to use a firewall and not expose more than you need.
+Only the game ports are open to the network. The admin and developer ports (SSH, database, telnet console) only accept connections from the server machine itself unless you choose to open them. See [Ports](#ports).
 
 ## Everyday use
 
@@ -144,11 +142,37 @@ The rest of this is for people who want to work on the server itself.
 
 | Service | What it is |
 |---|---|
-| `takp-server` | Builds and runs `world`, `queryserv`, `ucs`, the zone launchers, and `loginserver`, all under `supervisord`. Also runs `sshd` on host port 2222. |
-| `mariadb` | Game database. Exposed on host port 3307 for SQL clients. |
+| `takp-server` | Builds and runs `world`, `queryserv`, `ucs`, the zone launchers, and `loginserver`, all under `supervisord`. Also runs `sshd`. |
+| `mariadb` | Game database. |
 | `fail2ban-server`, `fail2ban-mariadb` | Watch SSH and MariaDB auth logs and ban through the `DOCKER-USER` iptables chain. |
 
 On boot, `containers/takp-server/setup.sh` checks what's missing and does only that work. Read it if you want the details.
+
+### Ports
+
+Player ports listen on `IP_ADDRESS` (all interfaces by default). Everything else listens on `127.0.0.1` only, so it's reachable from the host machine but not the network. To open one up, set its `*_BIND` variable to `0.0.0.0` in `.env` and run `docker compose up -d`.
+
+| Port | Used by | Listens on |
+|---|---|---|
+| 6000/udp | Login server (client login) | `IP_ADDRESS` |
+| 9000/udp | World (character select) | `IP_ADDRESS` |
+| 7778/udp | UCS (chat and mail) | `IP_ADDRESS` |
+| zone range/udp | Zones | `IP_ADDRESS` |
+| 2222/tcp | SSH into `takp-server` | `SSH_BIND` |
+| 3307/tcp | MariaDB | `MARIADB_BIND` |
+| 5998/tcp | Login server: world server registration | `LOGIN_TCP_BIND` |
+| 9000/tcp | World telnet console (also needs `TELNET_ENABLED=true`) | `TELNET_BIND` |
+| 9001/tcp | World: zone/launcher/UCS connections | `WORLD_TCP_BIND` |
+
+To reach a localhost-only port from another machine, tunnel through SSH to the host instead of opening it:
+
+```bash
+ssh -L 3307:localhost:3307 you@yourserver
+```
+
+The telnet console sends passwords in plain text, so don't expose it to the network.
+
+[fail2ban](https://github.com/fail2ban/fail2ban) watches SSH and MariaDB logins and bans IPs that keep guessing passwords. It matters most if you open those ports up.
 
 ### Where things live
 
@@ -172,7 +196,9 @@ The defaults are fine for most people. The ones you might change:
 
 | Variable | What it does |
 |---|---|
-| `IP_ADDRESS` | Which network interface the ports listen on. Set it to `127.0.0.1` to keep everything local-only. |
+| `IP_ADDRESS` | Which network interface the player ports listen on. Set it to `127.0.0.1` to keep the game local-only. |
+| `*_BIND` | Which interface each admin/developer port listens on. See [Ports](#ports). |
+| `TELNET_ENABLED` | Set to `true` to turn on the world telnet console. |
 | `PORT_RANGE_LOW` / `PORT_RANGE_HIGH` | Ports for zones. Raise the high end if you need more zones running at once, and forward the extra ports too. |
 | `AUTO_PULL` | Set to `false` to stop pulling updates on start. |
 | `FORCE_RECOMPILE` | Set to `true` to do a full rebuild on every start. |

@@ -22,15 +22,16 @@ services:
       - build-cache:/home/eqemu/.ccache/
       - takp-var-log:/var/log/
     ports:
-      - ${IP_ADDRESS}:2222:22
-      - ${IP_ADDRESS}:5998:5998
+      # Player ports
       - ${IP_ADDRESS}:6000:6000/udp
-      - ${IP_ADDRESS}:6999:6999/udp
+      - ${IP_ADDRESS}:9000:9000/udp
       - ${IP_ADDRESS}:7778:7778/udp
-      - ${IP_ADDRESS}:7778:7778
-      - ${IP_ADDRESS}:9000-9001:9000-9001/udp
-      - ${IP_ADDRESS}:9000-9001:9000-9001
-      - ${IP_ADDRESS}:${PORT_RANGE_LOW:-7000}-${PORT_RANGE_HIGH}:${PORT_RANGE_LOW:-7000}-${PORT_RANGE_HIGH}/udp
+      - ${IP_ADDRESS}:${PORT_RANGE_LOW:-7000}-${PORT_RANGE_HIGH:-7030}:${PORT_RANGE_LOW:-7000}-${PORT_RANGE_HIGH:-7030}/udp
+      # Developer/admin ports: localhost-only unless overridden in .env
+      - ${SSH_BIND:-127.0.0.1}:2222:22
+      - ${LOGIN_TCP_BIND:-127.0.0.1}:5998:5998
+      - ${TELNET_BIND:-127.0.0.1}:9000:9000
+      - ${WORLD_TCP_BIND:-127.0.0.1}:9001:9001
     environment:
       - CC=${CC:-/usr/bin/gcc}
       - CXX=${CXX:-/usr/bin/g++}
@@ -41,6 +42,7 @@ services:
       - CCACHE_DIR=/home/eqemu/.ccache
       - FORCE_RECOMPILE=${FORCE_RECOMPILE:-false}
       - AUTO_PULL=${AUTO_PULL:-true}
+      - TELNET_ENABLED=${TELNET_ENABLED:-false}
       - MARIADB_DATABASE=${MARIADB_DATABASE}
       - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
       - MARIADB_USER=${MARIADB_USER}
@@ -66,7 +68,7 @@ services:
         - INNODB_BUFFER_POOL_SIZE=${INNODB_BUFFER_POOL_SIZE:-256MB}
         - MARIADB_PORT=${MARIADB_PORT:-3306}
     ports:
-      - ${IP_ADDRESS}:${MARIADB_EXTERNAL_PORT:-3307}:${MARIADB_PORT:-3306}
+      - ${MARIADB_BIND:-127.0.0.1}:${MARIADB_EXTERNAL_PORT:-3307}:${MARIADB_PORT:-3306}
     volumes:
       - ${DATA_PATH_HOST}/mariadb:/var/lib/mysql:delegated
       - mariadb-var-log:/var/log/mysql/

@@ -30,8 +30,13 @@ if [ ! -f "/home/eqemu/server/login.json" ]; then
 fi
 
 if [ ! -f "/home/eqemu/server/eqemu_config.json" ]; then
+  world_key=$(openssl rand -hex 32)
   tmp=$(mktemp)
-  jq --arg db "$MARIADB_DATABASE" --arg user "$MARIADB_USER" --arg pass "$MARIADB_PASSWORD" '
+  jq --arg db "$MARIADB_DATABASE" --arg user "$MARIADB_USER" --arg pass "$MARIADB_PASSWORD" \
+    --arg telnet "${TELNET_ENABLED:-false}" \
+    --arg key "$world_key" '
+        .server.world.key = $key |
+        .server.world.telnet.enabled = $telnet |
         .server.database.host = "mariadb" | .server.database.db = $db |
         .server.database.username = $user | .server.database.password = $pass |
         .server.qsdatabase.host = "mariadb" | .server.qsdatabase.db = $db |
