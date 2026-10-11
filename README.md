@@ -145,15 +145,19 @@ docker compose exec mariadb sh -c 'mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" pe
 
 Or stop the server and copy the `data/` folder somewhere safe.
 
+Also keep a copy of `server/login.json`. It holds the password salt for player accounts, and a database backup restored without it leaves every account unable to log in.
+
 ## Troubleshooting
 
 **The first start failed partway through.** Look at the end of `docker compose logs takp-server` for the error, fix it, and run `docker compose up -d` again. Finished steps are skipped, so it picks up where it left off.
 
 **"Can't log in to MariaDB."** The database password is set the first time the database starts and never changes after that. If you edited the passwords in `.env` later, they no longer match. Change them back, or, if you have nothing worth keeping, delete the `data/` folder and start over.
 
+**The server won't start after I edited a config file.** Run `docker compose logs --tail 5 takp-server`. If you see `ERROR: server/... is broken`, the message gives the line and column of the mistake, usually a missing or extra comma or quote. Fix it and run `docker compose up -d`. For `eqemu_config.json` only, you can also delete the file and run `docker compose up -d` to regenerate it, though that loses your edits to it. **Don't delete `login.json`:** a regenerated one gets a new password salt, and every existing account's password stops working.
+
 **I can't log in right after a restart.** The login server waits until all enabled zones are up, which can take a minute or two. Check `docker compose logs takp-server | grep "loginserver:"` to see how far along it is.
 
-**I edited `.env` but my change didn't show up in `server/login.json` or `server/eqemu_config.json`.** Those files are created once on the first start, so your hand edits to them are safe. The exceptions are the `SERVER_*`, `TELNET_ENABLED` and `PORT_RANGE_*` settings, which are reapplied on every start. For anything else, edit the files directly, or delete them and run `docker compose up -d` to regenerate them.
+**I edited `.env` but my change didn't show up in `server/login.json` or `server/eqemu_config.json`.** Those files are created once on the first start, so your hand edits to them are safe. The exceptions are the `SERVER_*`, `TELNET_ENABLED` and `PORT_RANGE_*` settings, which are reapplied on every start. For anything else, edit the files directly. Don't delete `login.json` to regenerate it: that changes the password salt and breaks every existing account.
 
 **Some zones can't be entered.** Only the enabled zones are running. See [Running more zones](#running-more-zones).
 

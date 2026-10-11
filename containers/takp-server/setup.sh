@@ -49,6 +49,27 @@ if [ ! -f "/home/eqemu/server/eqemu_config.json" ]; then
 	chmod 600 /home/eqemu/server/eqemu_config.json
 fi
 
+# ---- Check hand-edited config files before using them ----
+check_json() {
+	local file="$1" err
+	if [ ! -s "$file" ]; then
+		err="the file is empty"
+	elif ! err=$(jq empty "$file" 2>&1); then
+		:
+	else
+		return 0
+	fi
+	echo "ERROR: server/$(basename "$file") is broken: $err" >&2
+	if [ "$(basename "$file")" = "login.json" ]; then
+		echo "Fix it on the host. Don't delete it: a new login.json gets a new password salt, and every account's password stops working." >&2
+	else
+		echo "Fix it on the host, or delete it and run 'docker compose up -d' to regenerate it." >&2
+	fi
+	exit 1
+}
+check_json /home/eqemu/server/login.json
+check_json /home/eqemu/server/eqemu_config.json
+
 # ---- Settings owned by .env (applied every start) ----
 tmp=$(mktemp)
 jq --arg long "${SERVER_LONG_NAME:-My TAKP Server}" \
