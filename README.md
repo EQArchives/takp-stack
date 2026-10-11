@@ -62,11 +62,15 @@ Keep a copy of the original `eqhost.txt` so you can switch back to the official 
 
 ### Create an account
 
-By default the login server won't create accounts for you. The easiest fix on a private server is to turn on auto-create:
+There's no simple way to create accounts yet. A command for it is planned.
+
+In the meantime, you can turn on auto-create:
 
 1. Open `server/login.json` (you may need `sudo`, since the file is owned by the container) and change `"auto_create_accounts": false` to `true`.
 2. Run `docker compose restart takp-server`.
 3. Log in with any username and password. The account is created the first time you use it.
+
+> **Heads up:** accounts made this way are created with a blank forum ID, which can cause problems later. Fine for trying things out. For a server other people will play on, wait for the account command.
 
 ### Make yourself a GM
 
@@ -212,6 +216,28 @@ docker compose exec takp-server supervisorctl restart world zones:*
 ```
 
 ccache keeps incremental builds fast. To SSH in instead of using `exec`, paste your public key (the one line in `~/.ssh/id_ed25519.pub` or similar) into `SSH_AUTHORIZED_KEYS` in `.env`, run `docker compose up -d`, and connect with `ssh -p 2222 eqemu@localhost`. SSH only accepts connections from the server machine unless you change `SSH_BIND`.
+
+### Using an external login server
+
+By default, world registers with the login server built into this stack, and player accounts live in your database. To list your server on a shared login server instead, you need an account for your server from whoever runs it.
+
+**Decide this before anyone plays.** World can only use one login server, and switching later breaks accounts. Account IDs aren't unique across login servers, so an account from the new login server can end up attached to an existing player's characters.
+
+1. Edit `server/eqemu_config.json` (you may need `sudo`) and set the `loginserver1` block under `world`:
+   ```json
+   "loginserver1": {
+     "host": "login.example.com",
+     "port": "5998",
+     "account": "your-server-account",
+     "password": "your-server-password",
+     "legacy": "1"
+   }
+   ```
+   Don't add `loginserver2` or `loginserver3`. Keep `legacy` unless the login server's operator tells you otherwise.
+2. Run `docker compose restart takp-server`.
+3. Players point `eqhost.txt` at the external login server, not at yours.
+
+`setup.sh` only writes `loginserver1` when it first creates `eqemu_config.json`, so your edit is kept across restarts. The built-in login server keeps running but has no world server listed, so nobody should create accounts on it.
 
 ### Settings in `.env`
 
