@@ -28,7 +28,7 @@ It's good for:
    ```bash
    cp .env.example .env
    ```
-   Open `.env` in a text editor and replace both `<template>` values (`MARIADB_PASSWORD` and `MARIADB_ROOT_PASSWORD`) with passwords of your own. You won't need to type them often, so make them long. Leave everything else alone for now.
+   Open `.env` in a text editor and replace both `<template>` values (`MARIADB_PASSWORD` and `MARIADB_ROOT_PASSWORD`) with passwords of your own. You won't need to type them often, so make them long. While you're there, give your server a name with `SERVER_LONG_NAME`. That's what shows up in the server list. Leave everything else alone for now.
 
 3. **Start the server.**
    ```bash
@@ -56,6 +56,8 @@ Host=127.0.0.1:6000
 
 Use `127.0.0.1` if the server is on the same computer you're playing on. Otherwise use the server's IP address, either its LAN IP (like `192.168.1.50`) or its public IP.
 
+**Playing from another computer on your home network?** Also set `SERVER_LOCAL_ADDRESS` in `.env` to the server's LAN IP and run `docker compose up -d`. Otherwise you'll see the server list but get stuck at character select.
+
 Keep a copy of the original `eqhost.txt` so you can switch back to the official TAKP servers later.
 
 ### Create an account
@@ -82,7 +84,7 @@ Log out completely and back in for it to take effect.
 To let people connect from outside your home network:
 
 1. **Forward these UDP ports** on your router to the machine running the server: `6000`, `7778`, `9000`, and the zone range (`7000–7030` unless you've changed `PORT_RANGE_LOW`/`PORT_RANGE_HIGH` in `.env`). No TCP ports are needed.
-2. **Tell the world server its public address.** Open `server/eqemu_config.json`, find the `"world"` section, and set `"address"` to your public IP. Then run `docker compose restart takp-server`.
+2. **Tell the server its public address.** Set `SERVER_PUBLIC_ADDRESS` in `.env` to your public IP (search "what is my IP" to find it) and run `docker compose up -d`.
 3. Have your friends put your public IP in their `eqhost.txt`.
 
 Only the game ports are open to the network. The admin and developer ports (SSH, database, telnet console) only accept connections from the server machine itself unless you choose to open them. See [Ports](#ports).
@@ -125,8 +127,7 @@ Out of the box, 30 zones run all the time: the boat docks plus a set of popular 
      -N -e "SELECT COUNT(*) FROM launcher_zones WHERE enabled = 1;"'
    ```
    Then raise `PORT_RANGE_HIGH` in `.env` so `PORT_RANGE_HIGH − PORT_RANGE_LOW + 1` is larger than that number.
-3. Also update `zones.ports.high` in `server/eqemu_config.json` to match. That file is only generated on the first start.
-4. Run `docker compose up -d --force-recreate takp-server`, and forward the larger range on your router.
+3. Run `docker compose up -d`, and forward the larger range on your router.
 
 Each zone uses memory even when nobody is in it, so add zones in batches and keep an eye on your machine.
 
@@ -148,11 +149,11 @@ Or stop the server and copy the `data/` folder somewhere safe.
 
 **I can't log in right after a restart.** The login server waits about 20 seconds so the zones can come up first. Give it a moment.
 
-**I edited `.env` but my change didn't show up in `server/login.json` or `server/eqemu_config.json`.** Those files are created once on the first start and never overwritten, so your hand edits to them are safe. To pick up new `.env` values, edit the files directly, or delete them and restart to regenerate them.
+**I edited `.env` but my change didn't show up in `server/login.json` or `server/eqemu_config.json`.** Those files are created once on the first start, so your hand edits to them are safe. The exceptions are the `SERVER_*`, `TELNET_ENABLED` and `PORT_RANGE_*` settings, which are reapplied on every start. For anything else, edit the files directly, or delete them and run `docker compose up -d` to regenerate them.
 
 **Some zones can't be entered.** Only the enabled zones are running. See [Running more zones](#running-more-zones).
 
-**Friends can see the server list but get stuck at character select or zoning.** Usually a port forward is missing (check the zone range) or the world `address` in `eqemu_config.json` isn't set to your public IP.
+**Friends can see the server list but get stuck at character select or zoning.** Usually a port forward is missing (check the zone range) or `SERVER_PUBLIC_ADDRESS` in `.env` isn't set to your public IP. If it's players on your home network who are stuck, check `SERVER_LOCAL_ADDRESS` instead.
 
 ---
 
@@ -218,6 +219,9 @@ The defaults are fine for most people. The ones you might change:
 
 | Variable | What it does |
 |---|---|
+| `SERVER_LONG_NAME` / `SERVER_SHORT_NAME` | Your server's name in the server list, and a short ID for it. |
+| `SERVER_LOCAL_ADDRESS` | Address for players on this machine or your home network: `127.0.0.1`, or the server's LAN IP for LAN play. |
+| `SERVER_PUBLIC_ADDRESS` | Your public IP, for players over the internet. Leave empty otherwise. |
 | `IP_ADDRESS` | Which network interface the player ports listen on. Set it to `127.0.0.1` to keep the game local-only. |
 | `*_BIND` | Which interface each admin/developer port listens on. See [Ports](#ports). |
 | `TELNET_ENABLED` | Set to `true` to turn on the world telnet console. |
