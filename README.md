@@ -90,6 +90,13 @@ To let people connect from outside your home network:
 2. **Tell the server its public address.** Set `SERVER_PUBLIC_ADDRESS` in `.env` to your public IP (search "what is my IP" to find it) and run `docker compose up -d`.
 3. Have your friends put your public IP in their `eqhost.txt`.
 
+**Using rootless Docker?** It hides each player's real IP from the server, so every player looks like they're on your home network and gets sent `SERVER_LOCAL_ADDRESS` instead of your public address. Players on your network can connect; players over the internet can't. Two ways around it:
+
+- Switch rootless Docker to a port driver that keeps the real IP: set `DOCKERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns` for the Docker daemon and restart it. Network throughput is lower with this driver.
+- Set `SERVER_LOCAL_ADDRESS` to your public IP as well. Internet players can then connect, but players on your own network only can if your router supports connecting to your public IP from inside (often called NAT loopback or hairpinning).
+
+Not sure if you're on rootless Docker? Run `docker info` and look for `rootless` under Security Options.
+
 Only the game ports are open to the network. The admin and developer ports (SSH, database, telnet console) only accept connections from the server machine itself unless you choose to open them. See [Ports](#ports).
 
 ## Everyday use
