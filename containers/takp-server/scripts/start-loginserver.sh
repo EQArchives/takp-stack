@@ -10,12 +10,12 @@ until ss -ltn | grep -q ':9001 ' || ((SECONDS >= deadline)); do sleep 1; done
 
 export MYSQL_PWD="$MARIADB_PASSWORD"
 expected=$(mysql --skip-ssl -h mariadb -u "$MARIADB_USER" -N -e \
-	"SELECT COUNT(*) FROM launcher_zones WHERE enabled = 1" "$MARIADB_DATABASE")
+  "SELECT COUNT(*) FROM launcher_zones WHERE enabled = 1" "$MARIADB_DATABASE")
 expected=${expected:-0}
 
 echo "loginserver: waiting for $expected zones..."
 until (($(ss -ulpn | grep -c '"zone"') >= expected)) || ((SECONDS >= deadline)); do
-	sleep 1
+  sleep 1
 done
 
 echo "loginserver: $(ss -ulpn | grep -c '"zone"') of $expected zones up after ${SECONDS}s, starting"
