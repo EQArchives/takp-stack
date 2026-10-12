@@ -9,7 +9,7 @@ set -e
 # Do app work that doesn't require root permissions
 # ---- Source ----
 if [ ! -d "/home/eqemu/source/.git" ]; then
-  git clone https://github.com/EQArchives/Server.git /home/eqemu/source
+  git clone ${SOURCE_BRANCH:+--branch "$SOURCE_BRANCH"} "$SOURCE_REPO" /home/eqemu/source
 else
   if [ "${AUTO_PULL:-false}" = "true" ]; then
     cd /home/eqemu/source && git pull

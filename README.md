@@ -8,7 +8,7 @@ It's good for:
 
 - Playing solo or with a few friends on your own server
 - Poking at the database, quests, or server code without breaking a live server
-- Getting a dev environment for the [EQArchives](https://github.com/EQArchives) server code
+- Getting a dev environment for the [EQMacEmu](https://github.com/EQMacEmu/Server) server code, or your own fork of it
 
 ## What you need
 
@@ -237,7 +237,7 @@ The telnet console sends passwords in plain text, so don't expose it to the netw
 
 ### Where things live
 
-- `source/` holds the [EQArchives/Server](https://github.com/EQArchives/Server) checkout. Edit code here.
+- `source/` holds the server code, [EQMacEmu/Server](https://github.com/EQMacEmu/Server) unless you've set `SOURCE_REPO`. Edit code here.
 - `server/` is the runtime directory: configs, logs, `quests/`, `maps/`, and symlinks to the built binaries.
 - `data/mariadb/` holds the database files.
 - The CMake build directory and ccache are stored in named Docker volumes (`build`, `build-cache`). They survive `down` but not `down -v`.
@@ -250,6 +250,28 @@ docker compose exec takp-server supervisorctl restart world zones:*
 ```
 
 ccache keeps incremental builds fast. To SSH in instead of using `exec`, paste your public key (the one line in `~/.ssh/id_ed25519.pub` or similar) into `SSH_AUTHORIZED_KEYS` in `.env`, run `docker compose up -d`, and connect with `ssh -p 2222 eqemu@localhost`. SSH only accepts connections from the server machine unless you change `SSH_BIND`.
+
+### Using your own fork
+
+To build from a different copy of the server code, such as your own fork or a branch, set these in `.env` before the first start:
+
+```bash
+SOURCE_REPO=https://github.com/you/Server.git
+SOURCE_BRANCH=my-branch
+```
+
+Leave `SOURCE_BRANCH` empty to use the repository's default branch.
+
+These settings are only used when `source/` is first downloaded. To switch an existing install:
+
+```bash
+docker compose exec -u eqemu takp-server git -C /home/eqemu/source remote set-url origin https://github.com/you/Server.git
+docker compose exec -u eqemu takp-server git -C /home/eqemu/source fetch origin
+docker compose exec -u eqemu takp-server git -C /home/eqemu/source checkout my-branch
+docker compose restart takp-server
+```
+
+The server rebuilds itself on that restart, because the code changed.
 
 ### Using an external login server
 
@@ -286,6 +308,7 @@ The defaults are fine for most people. The ones you might change:
 | `*_BIND` | Which interface each admin/developer port listens on. See [Ports](#ports). |
 | `TELNET_ENABLED` | Set to `true` to turn on the world telnet console. |
 | `PORT_RANGE_LOW` / `PORT_RANGE_HIGH` | Ports world hands out to zones, also published to players. Must be larger than the number of enabled zones. See [Running more zones](#running-more-zones). |
+| `SOURCE_REPO` / `SOURCE_BRANCH` | Where the server code is downloaded from on first start. See [Using your own fork](#using-your-own-fork). |
 | `AUTO_PULL` | Set to `true` to pull the latest code, quests, and maps on every start. Off by default. |
 | `FORCE_RECOMPILE` | Set to `true` to rebuild on every start, even if the code hasn't changed. Normally the server rebuilds only when the code changes. |
 | `SSH_AUTHORIZED_KEYS` | Your SSH *public* key (one line, from a `.pub` file). Empty disables SSH logins. |
