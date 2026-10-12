@@ -36,6 +36,7 @@ services:
       - ${TELNET_BIND:-127.0.0.1}:9000:9000
       - ${WORLD_TCP_BIND:-127.0.0.1}:9001:9001
     environment:
+      - AUTO_PULL=${AUTO_PULL:-false}
       - CC=${CC:-/usr/bin/gcc}
       - CXX=${CXX:-/usr/bin/g++}
       - IP_ADDRESS=${IP_ADDRESS:-127.0.0.1}
@@ -45,7 +46,6 @@ services:
       - TZ=${TZ:-UTC}
       - CCACHE_DIR=/home/eqemu/.ccache
       - FORCE_RECOMPILE=${FORCE_RECOMPILE:-false}
-      - AUTO_PULL=${AUTO_PULL:-true}
       - TELNET_ENABLED=${TELNET_ENABLED:-false}
       - MARIADB_DATABASE=${MARIADB_DATABASE}
       - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}

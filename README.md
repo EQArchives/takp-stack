@@ -111,16 +111,17 @@ Only the game ports are open to the network. The admin and developer ports (SSH,
 
 ### Updates
 
-Each time the server starts, it pulls the latest server code, quests, and maps. Updated quests and maps take effect on the next restart. If the server code itself changed, you also need to rebuild:
+Your server only changes when you update it. To get the latest server code, quests, and maps:
 
 ```bash
-docker compose run --rm -e FORCE_RECOMPILE=true takp-server
-docker compose up -d
+docker compose exec -u eqemu takp-server sh -c \
+  'for d in source server/quests server/maps; do git -C /home/eqemu/$d pull; done'
+docker compose restart takp-server
 ```
 
-To stay on your current version, add `AUTO_PULL=false` to `.env`.
+If the server code changed, the server rebuilds itself while it starts. That can take several minutes, and players can't log in until it's done. Watch it with `docker compose logs -f takp-server`.
 
-Your characters and database are never touched by updates.
+Updates never touch your characters or other player data.
 
 ### Running more zones
 
@@ -285,8 +286,8 @@ The defaults are fine for most people. The ones you might change:
 | `*_BIND` | Which interface each admin/developer port listens on. See [Ports](#ports). |
 | `TELNET_ENABLED` | Set to `true` to turn on the world telnet console. |
 | `PORT_RANGE_LOW` / `PORT_RANGE_HIGH` | Ports world hands out to zones, also published to players. Must be larger than the number of enabled zones. See [Running more zones](#running-more-zones). |
-| `AUTO_PULL` | Set to `false` to stop pulling updates on start. |
-| `FORCE_RECOMPILE` | Set to `true` to do a full rebuild on every start. |
+| `AUTO_PULL` | Set to `true` to pull the latest code, quests, and maps on every start. Off by default. |
+| `FORCE_RECOMPILE` | Set to `true` to rebuild on every start, even if the code hasn't changed. Normally the server rebuilds only when the code changes. |
 | `SSH_AUTHORIZED_KEYS` | Your SSH *public* key (one line, from a `.pub` file). Empty disables SSH logins. |
 | `DATA_PATH_HOST` | Where the database files are stored on the host. |
 | `PUID` / `PGID` | User and group IDs that own `server/` and `source/` on the host. See [Editing config files](#editing-config-files). |

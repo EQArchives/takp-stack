@@ -11,7 +11,7 @@ set -e
 if [ ! -d "/home/eqemu/source/.git" ]; then
   git clone https://github.com/EQArchives/Server.git /home/eqemu/source
 else
-  if [ "${AUTO_PULL:-true}" = "true" ]; then
+  if [ "${AUTO_PULL:-false}" = "true" ]; then
     cd /home/eqemu/source && git pull
   fi
 fi
@@ -95,18 +95,26 @@ rm -f "$tmp"
 # ---- Quests and Maps ----
 if [ ! -d "/home/eqemu/server/quests/.git" ]; then
   git clone https://github.com/EQArchives/quests.git /home/eqemu/server/quests
-elif [ "${AUTO_PULL:-true}" = "true" ]; then
+elif [ "${AUTO_PULL:-false}" = "true" ]; then
   cd /home/eqemu/server/quests && git pull
 fi
 
 if [ ! -d "/home/eqemu/server/maps/.git" ]; then
   git clone https://github.com/EQMacEmu/Maps.git /home/eqemu/server/maps
-elif [ "${AUTO_PULL:-true}" = "true" ]; then
+elif [ "${AUTO_PULL:-false}" = "true" ]; then
   cd /home/eqemu/server/maps && git pull
 fi
 
 # ---- Build ----
-if [ ! -f "/home/eqemu/build/bin/world" ] || [ "${FORCE_RECOMPILE:-false}" = "true" ]; then
+# Rebuild when the source commit differs from the last successful build, when
+# there's no build yet, or when FORCE_RECOMPILE=true. The marker is written only
+# after ninja succeeds, so an interrupted or failed build runs again next start.
+marker=/home/eqemu/build/.built_commit
+head=$(git -C /home/eqemu/source rev-parse HEAD)
+if [ "${FORCE_RECOMPILE:-false}" = "true" ] ||
+  [ ! -f /home/eqemu/build/bin/world ] ||
+  [ "$(cat "$marker" 2>/dev/null)" != "$head" ]; then
+  echo "Building server from source commit $head..."
   mkdir -p /home/eqemu/build
   cd /home/eqemu/build
   cmake -GNinja \
@@ -117,6 +125,7 @@ if [ ! -f "/home/eqemu/build/bin/world" ] || [ "${FORCE_RECOMPILE:-false}" = "tr
     -DEQEMU_BUILD_PERL=ON \
     -DEQEMU_BUILD_LOGGING=ON /home/eqemu/source
   ninja -v
+  echo "$head" >"$marker"
 fi
 
 # ---- Server directory layout ----
