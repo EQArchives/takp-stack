@@ -72,14 +72,15 @@ Then log in with the TAKP client using that name and password.
 
 ### Make yourself a GM
 
-Log in once and go as far as character select, so the server creates your in-game account. Then run this, replacing `yourname` with your account name:
+Log in once and go as far as character select, so the server creates your in-game account. Then run:
 
 ```bash
-docker compose exec mariadb sh -c 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" \
-  -e "UPDATE account SET status = 255 WHERE name = \"yourname\";"'
+docker compose exec takp-server make-gm yourname
 ```
 
 Log out completely and back in for it to take effect.
+
+That gives the highest status, 255. To set a different level, add it after the name (for example `make-gm yourname 100`). Use `0` to make an account a regular player again. Common levels: `0` player, `50` guide, `100` GM, `150` lead GM, `200` GM management, `255` everything.
 
 ## Playing with friends over the internet
 

@@ -1,0 +1,27 @@
+#!/bin/bash
+# Set an account's GM status (0 = player, 255 = highest)
+# Usage: docker compose exec takp-server make-gm <name> [level]
+set -euo pipefail
+
+die() {
+  echo "Error: $*" >&2
+  exit 1
+}
+
+export MYSQL_PWD="$MARIADB_PASSWORD"
+sql() { mysql --skip-ssl -h mariadb -u "$MARIADB_USER" -N "$MARIADB_DATABASE" -e "$1"; }
+
+name=${1:-}
+level=${2:-255}
+[ -n "$name" ] || die "usage: make-gm <name> [level]"
+
+name_re='^[A-Za-z0-9]{1,30}$'
+[[ $name =~ $name_re ]] || die "account names are 1-30 letters and digits"
+level_re='^[0-9]{1,3}$'
+[[ $level =~ $level_re ]] && ((level <= 255)) || die "level must be 0-255 (0 = player, 255 = highest)"
+
+old=$(sql "SELECT status FROM account WHERE name = '$name'")
+[ -n "$old" ] || die "no in-game account named $name yet. Log in once and reach character select, then try again."
+
+sql "UPDATE account SET status = $level WHERE name = '$name'"
+echo "$name: status $old -> $level. Log out completely and back in for it to take effect."
