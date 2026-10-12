@@ -94,13 +94,13 @@ rm -f "$tmp"
 
 # ---- Quests and Maps ----
 if [ ! -d "/home/eqemu/server/quests/.git" ]; then
-  git clone https://github.com/EQArchives/quests.git /home/eqemu/server/quests
+  git clone ${QUESTS_BRANCH:+--branch "$QUESTS_BRANCH"} "$QUESTS_REPO" /home/eqemu/server/quests
 elif [ "${AUTO_PULL:-false}" = "true" ]; then
   cd /home/eqemu/server/quests && git pull
 fi
 
 if [ ! -d "/home/eqemu/server/maps/.git" ]; then
-  git clone https://github.com/EQMacEmu/Maps.git /home/eqemu/server/maps
+  git clone ${MAPS_BRANCH:+--branch "$MAPS_BRANCH"} "$MAPS_REPO" /home/eqemu/server/maps
 elif [ "${AUTO_PULL:-false}" = "true" ]; then
   cd /home/eqemu/server/maps && git pull
 fi

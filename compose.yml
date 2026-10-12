@@ -57,6 +57,10 @@ services:
       - SERVER_PUBLIC_ADDRESS=${SERVER_PUBLIC_ADDRESS:-}
       - SOURCE_REPO=${SOURCE_REPO:-https://github.com/EQMacEmu/Server.git}
       - SOURCE_BRANCH=${SOURCE_BRANCH:-}
+      - QUESTS_REPO=${QUESTS_REPO:-https://github.com/EQMacEmu/quests.git}
+      - QUESTS_BRANCH=${QUESTS_BRANCH:-}
+      - MAPS_REPO=${MAPS_REPO:-https://github.com/EQMacEmu/Maps.git}
+      - MAPS_BRANCH=${MAPS_BRANCH:-}
     tty: true
     stop_grace_period: 60s
     networks:

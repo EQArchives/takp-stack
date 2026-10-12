@@ -253,16 +253,17 @@ ccache keeps incremental builds fast. To SSH in instead of using `exec`, paste y
 
 ### Using your own fork
 
-To build from a different copy of the server code, such as your own fork or a branch, set these in `.env` before the first start:
+To build from a different copy of the server code, quests, or maps, such as your own fork or a branch, set these in `.env` before the first start:
 
-```bash
-SOURCE_REPO=https://github.com/you/Server.git
-SOURCE_BRANCH=my-branch
-```
+| Setting | Default | Downloaded to |
+|---|---|---|
+| `SOURCE_REPO` / `SOURCE_BRANCH` | [EQMacEmu/Server](https://github.com/EQMacEmu/Server) | `source/` |
+| `QUESTS_REPO` / `QUESTS_BRANCH` | [EQMacEmu/quests](https://github.com/EQMacEmu/quests) | `server/quests/` |
+| `MAPS_REPO` / `MAPS_BRANCH` | [EQMacEmu/Maps](https://github.com/EQMacEmu/Maps) | `server/maps/` |
 
-Leave `SOURCE_BRANCH` empty to use the repository's default branch.
+Leave a `_BRANCH` setting empty to use that repository's default branch.
 
-These settings are only used when `source/` is first downloaded. To switch an existing install:
+These settings are only used when a folder is first downloaded. To switch an existing install, run the following, replacing `/home/eqemu/source` with `/home/eqemu/server/quests` or `/home/eqemu/server/maps` as needed:
 
 ```bash
 docker compose exec -u eqemu takp-server git -C /home/eqemu/source remote set-url origin https://github.com/you/Server.git
@@ -271,7 +272,7 @@ docker compose exec -u eqemu takp-server git -C /home/eqemu/source checkout my-b
 docker compose restart takp-server
 ```
 
-The server rebuilds itself on that restart, because the code changed.
+Update the matching settings in `.env` too, so they describe what's installed. If the server code changed, the server rebuilds itself on that restart. Quests and maps are loaded fresh on every restart.
 
 ### Using an external login server
 
@@ -308,7 +309,7 @@ The defaults are fine for most people. The ones you might change:
 | `*_BIND` | Which interface each admin/developer port listens on. See [Ports](#ports). |
 | `TELNET_ENABLED` | Set to `true` to turn on the world telnet console. |
 | `PORT_RANGE_LOW` / `PORT_RANGE_HIGH` | Ports world hands out to zones, also published to players. Must be larger than the number of enabled zones. See [Running more zones](#running-more-zones). |
-| `SOURCE_REPO` / `SOURCE_BRANCH` | Where the server code is downloaded from on first start. See [Using your own fork](#using-your-own-fork). |
+| `SOURCE_REPO`, `QUESTS_REPO`, `MAPS_REPO` and their `_BRANCH` settings | Where the server code, quests, and maps are downloaded from on first start. See [Using your own fork](#using-your-own-fork). |
 | `AUTO_PULL` | Set to `true` to pull the latest code, quests, and maps on every start. Off by default. |
 | `FORCE_RECOMPILE` | Set to `true` to rebuild on every start, even if the code hasn't changed. Normally the server rebuilds only when the code changes. |
 | `SSH_AUTHORIZED_KEYS` | Your SSH *public* key (one line, from a `.pub` file). Empty disables SSH logins. |
