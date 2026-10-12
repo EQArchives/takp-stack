@@ -110,22 +110,23 @@ fi
 # there's no build yet, or when FORCE_RECOMPILE=true. The marker is written only
 # after ninja succeeds, so an interrupted or failed build runs again next start.
 marker=/home/eqemu/build/.built_commit
-head=$(git -C /home/eqemu/source rev-parse HEAD)
+build_id="$(git -C /home/eqemu/source rev-parse HEAD) ${CMAKE_BUILD_TYPE:-RelWithDebInfo} ${CMAKE_EXTRA_ARGS:-}"
 if [ "${FORCE_RECOMPILE:-false}" = "true" ] ||
   [ ! -f /home/eqemu/build/bin/world ] ||
-  [ "$(cat "$marker" 2>/dev/null)" != "$head" ]; then
-  echo "Building server from source commit $head..."
+  [ "$(cat "$marker" 2>/dev/null)" != "$build_id" ]; then
+  echo "Building server ($build_id)"
   mkdir -p /home/eqemu/build
   cd /home/eqemu/build
   cmake -GNinja \
+    -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE:-RelWithDebInfo}" \
     -DCMAKE_C_COMPILER_LAUNCHER=ccache \
     -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
     -DEQEMU_BUILD_LOGIN=ON \
     -DEQEMU_BUILD_LUA=ON \
     -DEQEMU_BUILD_PERL=ON \
-    -DEQEMU_BUILD_LOGGING=ON /home/eqemu/source
+    -DEQEMU_BUILD_LOGGING=ON ${CMAKE_EXTRA_ARGS:-} /home/eqemu/source
   ninja -v
-  echo "$head" >"$marker"
+  echo "$build_id" >"$marker"
 fi
 
 # ---- Server directory layout ----

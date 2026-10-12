@@ -38,29 +38,32 @@ services:
     environment:
       - AUTO_PULL=${AUTO_PULL:-false}
       - CC=${CC:-/usr/bin/gcc}
-      - CXX=${CXX:-/usr/bin/g++}
-      - IP_ADDRESS=${IP_ADDRESS:-127.0.0.1}
-      - PORT_RANGE_LOW=${PORT_RANGE_LOW:-7000}
-      - PORT_RANGE_HIGH=${PORT_RANGE_HIGH:-7030}
-      - SSH_AUTHORIZED_KEYS=${SSH_AUTHORIZED_KEYS}
-      - TZ=${TZ:-UTC}
       - CCACHE_DIR=/home/eqemu/.ccache
+      - CCACHE_MAXSIZE=${CCACHE_MAXSIZE:-5G}
+      - CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-RelWithDebInfo}
+      - CMAKE_EXTRA_ARGS=${CMAKE_EXTRA_ARGS:-}
+      - CXX=${CXX:-/usr/bin/g++}
       - FORCE_RECOMPILE=${FORCE_RECOMPILE:-false}
-      - TELNET_ENABLED=${TELNET_ENABLED:-false}
+      - IP_ADDRESS=${IP_ADDRESS:-127.0.0.1}
+      - MAPS_BRANCH=${MAPS_BRANCH:-}
+      - MAPS_REPO=${MAPS_REPO:-https://github.com/EQMacEmu/Maps.git}
       - MARIADB_DATABASE=${MARIADB_DATABASE}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD}
       - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
       - MARIADB_USER=${MARIADB_USER}
-      - MARIADB_PASSWORD=${MARIADB_PASSWORD}
-      - SERVER_LONG_NAME=${SERVER_LONG_NAME:-My TAKP Server}
-      - SERVER_SHORT_NAME=${SERVER_SHORT_NAME:-mytakp}
-      - SERVER_LOCAL_ADDRESS=${SERVER_LOCAL_ADDRESS:-127.0.0.1}
-      - SERVER_PUBLIC_ADDRESS=${SERVER_PUBLIC_ADDRESS:-}
-      - SOURCE_REPO=${SOURCE_REPO:-https://github.com/EQMacEmu/Server.git}
-      - SOURCE_BRANCH=${SOURCE_BRANCH:-}
-      - QUESTS_REPO=${QUESTS_REPO:-https://github.com/EQMacEmu/quests.git}
+      - PORT_RANGE_HIGH=${PORT_RANGE_HIGH:-7030}
+      - PORT_RANGE_LOW=${PORT_RANGE_LOW:-7000}
       - QUESTS_BRANCH=${QUESTS_BRANCH:-}
-      - MAPS_REPO=${MAPS_REPO:-https://github.com/EQMacEmu/Maps.git}
-      - MAPS_BRANCH=${MAPS_BRANCH:-}
+      - QUESTS_REPO=${QUESTS_REPO:-https://github.com/EQMacEmu/quests.git}
+      - SERVER_LOCAL_ADDRESS=${SERVER_LOCAL_ADDRESS:-127.0.0.1}
+      - SERVER_LONG_NAME=${SERVER_LONG_NAME:-My TAKP Server}
+      - SERVER_PUBLIC_ADDRESS=${SERVER_PUBLIC_ADDRESS:-}
+      - SERVER_SHORT_NAME=${SERVER_SHORT_NAME:-mytakp}
+      - SOURCE_BRANCH=${SOURCE_BRANCH:-}
+      - SOURCE_REPO=${SOURCE_REPO:-https://github.com/EQMacEmu/Server.git}
+      - SSH_AUTHORIZED_KEYS=${SSH_AUTHORIZED_KEYS}
+      - TELNET_ENABLED=${TELNET_ENABLED:-false}
+      - TZ=${TZ:-UTC}
     tty: true
     stop_grace_period: 60s
     networks:

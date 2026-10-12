@@ -311,6 +311,9 @@ The defaults are fine for most people. The ones you might change:
 | `PORT_RANGE_LOW` / `PORT_RANGE_HIGH` | Ports world hands out to zones, also published to players. Must be larger than the number of enabled zones. See [Running more zones](#running-more-zones). |
 | `SOURCE_REPO`, `QUESTS_REPO`, `MAPS_REPO` and their `_BRANCH` settings | Where the server code, quests, and maps are downloaded from on first start. See [Using your own fork](#using-your-own-fork). |
 | `AUTO_PULL` | Set to `true` to pull the latest code, quests, and maps on every start. Off by default. |
+| `CMAKE_BUILD_TYPE` | How the server is compiled: `RelWithDebInfo` (default), `Release`, or `Debug`. Changing it rebuilds on the next start. |
+| `CMAKE_EXTRA_ARGS` | Extra CMake options for the build, separated by spaces (for example `-DEQEMU_BUILD_PERL=OFF`). Changing them rebuilds on the next start. |
+| `CCACHE_MAXSIZE` | Disk space the compiler cache may use (default `5G`). Lower it on a small disk. |
 | `FORCE_RECOMPILE` | Set to `true` to rebuild on every start, even if the code hasn't changed. Normally the server rebuilds only when the code changes. |
 | `SSH_AUTHORIZED_KEYS` | Your SSH *public* key (one line, from a `.pub` file). Empty disables SSH logins. |
 | `DATA_PATH_HOST` | Where the database files are stored on the host. |
