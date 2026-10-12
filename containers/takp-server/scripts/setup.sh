@@ -188,11 +188,6 @@ if [ "$tables" -eq 0 ]; then
 else
   echo "$DB_NAME already has $tables tables, skipping load."
 fi
-has_ls_settings=$($MYSQL -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME' AND table_name='tblloginserversettings'")
-if [ "$has_ls_settings" -eq 0 ]; then
-  echo "Loading tblloginserversettings..."
-  $MYSQL "$DB_NAME" </home/eqemu/source/loginserver/login_util/tblloginserversettings.sql
-fi
 list_types=$($MYSQL -N -e "SELECT COUNT(*) FROM \`$DB_NAME\`.tblServerListType" 2>/dev/null || echo 0)
 if [ "$list_types" -eq 0 ]; then
   echo "Loading tblServerListType..."
