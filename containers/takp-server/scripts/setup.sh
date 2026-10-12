@@ -179,6 +179,10 @@ if [ "$tables" -eq 0 ]; then
   done
   echo "Applying default zone set..."
   $MYSQL "$DB_NAME" </home/eqemu/default_zones.sql
+  echo "Resetting player table IDs to start at 1..."
+  for t in $(grep -hoE '^CREATE TABLE `[^`]+`' "$tmp"/player_tables*.sql "$tmp"/login_tables*.sql | cut -d'`' -f2); do
+    $MYSQL "$DB_NAME" -e "ALTER TABLE \`$t\` AUTO_INCREMENT = 1"
+  done
   rm -rf "$tmp"
 else
   echo "$DB_NAME already has $tables tables, skipping load."
