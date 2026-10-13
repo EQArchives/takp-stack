@@ -99,6 +99,52 @@ Not sure if you're on rootless Docker? Run `docker info` and look for `rootless`
 
 Only the game ports are open to the network. The admin and developer ports (SSH, database, telnet console) only accept connections from the server machine itself unless you choose to open them. See [Ports](#ports).
 
+## Optional tools
+
+Extra tools can run alongside the server. Each one is off until you turn it on. To turn tools on, list them in `COMPOSE_PROFILES` in `.env`, separated by commas, then run `docker compose up -d`.
+
+| Tool | Name in `COMPOSE_PROFILES` | What it is |
+|---|---|---|
+| Players website | `players` | A website for your players: account registration, character profiles, item, NPC, and spell lookups, raid scheduling, and DKP. |
+
+### Players website
+
+The [EQMacEmu Players](https://github.com/nazwadi/EQMacEmu_Players) website, connected to your server's database.
+
+1. **Fill in its settings.** In `.env`, set `PLAYERS_SECRET_KEY` and `PLAYERS_DB_PASSWORD`. Generate each with:
+   ```bash
+   openssl rand -hex 32
+   ```
+
+2. **Copy the login server's password salt.** Accounts created on the website need it, or they can't log in to the game. Print it with:
+   ```bash
+   docker compose exec takp-server jq -r .database.salt /home/eqemu/server/login.json
+   ```
+   and paste it after `PLAYERS_LS_PASSWORD_SALT=`. If it prints nothing, leave the setting empty.
+
+3. **Turn it on.** Set `COMPOSE_PROFILES=players` and run `docker compose up -d`. The first start downloads and builds the website, which takes a few minutes. Watch it with `docker compose logs -f players`.
+
+4. **Load its starter data.** Once, after the first start:
+   ```bash
+   docker compose exec players sh scripts/bootstrap.sh
+   ```
+
+5. **Make yourself an admin.**
+   ```bash
+   docker compose exec players python manage.py createsuperuser
+   ```
+   The admin pages are at `/admin/`. Staff accounts are asked to set up two-factor login (an authenticator app or a passkey) the first time they sign in.
+
+**Trying it on your own computer:** the website expects to sit behind HTTPS, and a plain `http://127.0.0.1:8000` gets redirected away. For local testing, set `PLAYERS_DEBUG=TRUE` and run `docker compose up -d players`. Set it back to `FALSE` before anyone else can reach the site, because debug mode shows detailed error pages to visitors.
+
+**Putting it on the internet:** run it behind something that handles HTTPS, such as Cloudflare or Caddy, and keep `PLAYERS_BIND=127.0.0.1` so that's the only way in. Then set `PLAYERS_SITE_URL` to the site's address (for example `https://players.example.com`), add the hostname to `PLAYERS_ALLOWED_HOSTS`, and set `PLAYERS_CSRF_TRUSTED_ORIGINS` to the same `https://` address.
+
+**Updating:** the website doesn't update on restart. To get the latest version:
+```bash
+docker compose build players
+docker compose up -d players
+```
+
 ## Everyday use
 
 | To... | Run |
@@ -173,6 +219,13 @@ docker compose exec mariadb sh -c 'mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" pe
 
 Or stop the server and copy the `data/` folder somewhere safe.
 
+If you run the [Players website](#players-website), back up its database too, and the images people have uploaded to it:
+
+```bash
+docker compose exec mariadb sh -c 'mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" players' > players-backup-$(date +%F).sql
+docker compose cp players:/app/uploads ./players-uploads-$(date +%F)
+```
+
 Also keep a copy of `server/login.json`. It holds the password salt for player accounts, and a database backup restored without it leaves every account unable to log in.
 
 ## Troubleshooting
@@ -206,6 +259,9 @@ The rest of this is for people who want to work on the server itself.
 | `takp-server` | Builds and runs `world`, `queryserv`, `ucs`, the zone launchers, and `loginserver`, all under `supervisord`. Also runs `sshd`. |
 | `mariadb` | Game database. |
 | `fail2ban-server`, `fail2ban-mariadb` | Watch SSH and MariaDB auth logs and ban through the `DOCKER-USER` iptables chain. |
+| `players` | Optional (`players` profile). The Players website: Django under gunicorn, built from `PLAYERS_REPO`. Runs migrations on every start. |
+| `players-db-init` | Optional (`players` profile). Runs `containers/players-db-init/init.sh` once and exits: creates the `players` database and MariaDB user, and grants it read access to the game database plus updates to the few tables the website changes. |
+| `redis` | Optional (`players` profile). Cache for the Players website, including its rate limits. Nothing is saved to disk. |
 
 On boot, `containers/takp-server/setup.sh` checks what's missing and does only that work. Read it if you want the details.
 
@@ -224,6 +280,7 @@ Player ports listen on `IP_ADDRESS` (all interfaces by default). Everything else
 | 5998/tcp | Login server: world server registration | `LOGIN_TCP_BIND` |
 | 9000/tcp | World telnet console (also needs `TELNET_ENABLED=true`) | `TELNET_BIND` |
 | 9001/tcp | World: zone/launcher/UCS connections | `WORLD_TCP_BIND` |
+| 8000/tcp | Players website (`PLAYERS_PORT`), when turned on | `PLAYERS_BIND` |
 
 To reach a localhost-only port from another machine, tunnel through SSH to the host instead of opening it:
 
@@ -241,6 +298,7 @@ The telnet console sends passwords in plain text, so don't expose it to the netw
 - `server/` is the runtime directory: configs, logs, `quests/`, `maps/`, and symlinks to the built binaries.
 - `data/mariadb/` holds the database files.
 - The CMake build directory and ccache are stored in named Docker volumes (`build`, `build-cache`). They survive `down` but not `down -v`.
+- Images uploaded to the Players website are stored in the `players-uploads` named volume, which also doesn't survive `down -v`.
 
 ### Iterating on server code
 
@@ -308,6 +366,8 @@ The defaults are fine for most people. The ones you might change:
 | `IP_ADDRESS` | Which network interface the player ports listen on. Set it to `127.0.0.1` to keep the game local-only. |
 | `*_BIND` | Which interface each admin/developer port listens on. See [Ports](#ports). |
 | `TELNET_ENABLED` | Set to `true` to turn on the world telnet console. |
+| `COMPOSE_PROFILES` | Optional tools to run, separated by commas (for example `players`). See [Optional tools](#optional-tools). |
+| `PLAYERS_*` | Settings for the Players website. See [Players website](#players-website) and the comments in `.env.example`. |
 | `PORT_RANGE_LOW` / `PORT_RANGE_HIGH` | Ports world hands out to zones, also published to players. Must be larger than the number of enabled zones. See [Running more zones](#running-more-zones). |
 | `SOURCE_REPO`, `QUESTS_REPO`, `MAPS_REPO` and their `_BRANCH` settings | Where the server code, quests, and maps are downloaded from on first start. See [Using your own fork](#using-your-own-fork). |
 | `AUTO_PULL` | Set to `true` to pull the latest code, quests, and maps on every start. Off by default. |

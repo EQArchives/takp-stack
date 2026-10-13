@@ -5,8 +5,9 @@ networks:
 volumes:
   build:
   build-cache:
-  takp-var-log:
   mariadb-var-log:
+  players-uploads:
+  takp-var-log:
 
 services:
 
@@ -49,6 +50,7 @@ services:
       - MAPS_REPO=${MAPS_REPO:-https://github.com/EQMacEmu/Maps.git}
       - MARIADB_DATABASE=${MARIADB_DATABASE}
       - MARIADB_PASSWORD=${MARIADB_PASSWORD}
+      - MARIADB_PORT=${MARIADB_PORT:-3306}
       - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
       - MARIADB_USER=${MARIADB_USER}
       - PORT_RANGE_HIGH=${PORT_RANGE_HIGH:-7030}
@@ -100,6 +102,78 @@ services:
       - backend
     depends_on:
       - fail2ban-mariadb
+
+  players:
+    profiles: [players]
+    restart: unless-stopped
+    build:
+      context: ${PLAYERS_REPO:-https://github.com/nazwadi/EQMacEmu_Players.git}#${PLAYERS_BRANCH:-main}
+    volumes:
+      - players-uploads:/app/uploads
+    ports:
+      - ${PLAYERS_BIND:-127.0.0.1}:${PLAYERS_PORT:-8000}:8000
+    environment:
+      - ALLOWED_HOSTS=${PLAYERS_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - CSRF_TRUSTED_ORIGINS=${PLAYERS_CSRF_TRUSTED_ORIGINS:-}
+      - DEBUG=${PLAYERS_DEBUG:-FALSE}
+      - DJANGO_APP_DB_HOST=mariadb
+      - DJANGO_APP_DB_NAME=${PLAYERS_DB_NAME:-players}
+      - DJANGO_APP_DB_PASSWORD=${PLAYERS_DB_PASSWORD:-}
+      - DJANGO_APP_DB_PORT=${MARIADB_PORT:-3306}
+      - DJANGO_APP_DB_USER=${PLAYERS_DB_USER:-players}
+      - DJANGO_APP_SECRET_KEY=${PLAYERS_SECRET_KEY:-}
+      - GAME_DB_HOST=mariadb
+      - GAME_DB_NAME=${MARIADB_DATABASE}
+      - GAME_DB_PASSWORD=${PLAYERS_DB_PASSWORD:-}
+      - GAME_DB_PORT=${MARIADB_PORT:-3306}
+      - GAME_DB_USER=${PLAYERS_DB_USER:-players}
+      - LS_DB_HOST=mariadb
+      - LS_DB_NAME=${MARIADB_DATABASE}
+      - LS_DB_PASSWORD=${PLAYERS_DB_PASSWORD:-}
+      - LS_DB_PORT=${MARIADB_PORT:-3306}
+      - LS_DB_USER=${PLAYERS_DB_USER:-players}
+      - LS_PASSWORD_SALT=${PLAYERS_LS_PASSWORD_SALT:-}
+      - REDIS_URL=redis://redis:6379/1
+      - SITE_URL=${PLAYERS_SITE_URL:-http://localhost:8000}
+      - TZ=${TZ:-UTC}
+    networks:
+      - backend
+    depends_on:
+      mariadb:
+        condition: service_started
+      players-db-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+
+  players-db-init:
+    profiles: [players]
+    build:
+      context: ./containers/mariadb
+    restart: "no"
+    entrypoint: ["sh", "/init.sh"]
+    volumes:
+      - ./containers/players-db-init/init.sh:/init.sh:ro
+    environment:
+      - MARIADB_DATABASE=${MARIADB_DATABASE}
+      - MARIADB_PORT=${MARIADB_PORT:-3306}
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+      - PLAYERS_DB_NAME=${PLAYERS_DB_NAME:-players}
+      - PLAYERS_DB_PASSWORD=${PLAYERS_DB_PASSWORD:-}
+      - PLAYERS_DB_USER=${PLAYERS_DB_USER:-players}
+      - PLAYERS_SECRET_KEY=${PLAYERS_SECRET_KEY:-}
+    networks:
+      - backend
+    depends_on:
+      - mariadb
+
+  redis:
+    profiles: [players]
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no --maxmemory 64mb --maxmemory-policy allkeys-lru
+    networks:
+      - backend
 
   fail2ban-server:
     restart: unless-stopped

@@ -147,7 +147,7 @@ done
 # ---- Database ----
 DB_NAME="$MARIADB_DATABASE"
 export MYSQL_PWD="$MARIADB_ROOT_PASSWORD"
-MYSQL="mysql --skip-ssl -h mariadb -u root"
+MYSQL="mysql --skip-ssl -h mariadb -u root -P ${MARIADB_PORT:-3306}"
 DUMP_DIR="/home/eqemu/source/utils/sql/database_full"
 
 echo "Waiting for MariaDB..."
