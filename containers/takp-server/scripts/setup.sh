@@ -80,6 +80,7 @@ jq --arg long "${SERVER_LONG_NAME:-My TAKP Server}" \
   --arg telnet "${TELNET_ENABLED:-false}" \
   --arg plow "${PORT_RANGE_LOW:-7000}" \
   --arg phigh "${PORT_RANGE_HIGH:-7030}" \
+  --arg dbport "${MARIADB_PORT:-3306}" \
   '
     .server.world.longname = $long |
     .server.world.shortname = $short |
@@ -87,9 +88,19 @@ jq --arg long "${SERVER_LONG_NAME:-My TAKP Server}" \
     .server.world.address = $public |
     .server.world.telnet.enabled = $telnet |
     .server.zones.ports.low = $plow |
-    .server.zones.ports.high = $phigh
+    .server.zones.ports.high = $phigh |
+    .server.database.port = $dbport |
+    .server.qsdatabase.port = $dbport
   ' /home/eqemu/server/eqemu_config.json >"$tmp"
 cat "$tmp" >/home/eqemu/server/eqemu_config.json
+rm -f "$tmp"
+
+tmp=$(mktemp)
+jq --arg dbport "${MARIADB_PORT:-3306}" '
+    .database.port = $dbport |
+    .logsys_database.port = $dbport
+  ' /home/eqemu/server/login.json >"$tmp"
+cat "$tmp" >/home/eqemu/server/login.json
 rm -f "$tmp"
 
 # ---- Quests and Maps ----

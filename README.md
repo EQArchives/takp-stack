@@ -238,7 +238,7 @@ Also keep a copy of `server/login.json`. It holds the password salt for player a
 
 **I can't log in right after a restart.** The login server waits until all enabled zones are up, which can take a minute or two. Check `docker compose logs takp-server | grep "loginserver:"` to see how far along it is.
 
-**I edited `.env` but my change didn't show up in `server/login.json` or `server/eqemu_config.json`.** Those files are created once on the first start, so your hand edits to them are safe. The exceptions are the `SERVER_*`, `TELNET_ENABLED` and `PORT_RANGE_*` settings, which are reapplied on every start. For anything else, edit the files directly. Don't delete `login.json` to regenerate it: that changes the password salt and breaks every existing account.
+**I edited `.env` but my change didn't show up in `server/login.json` or `server/eqemu_config.json`.** Those files are created once on the first start, so your hand edits to them are safe. The exceptions are the `SERVER_*`, `TELNET_ENABLED`, `PORT_RANGE_*` and `MARIADB_PORT` settings, which are reapplied on every start. For anything else, edit the files directly. Don't delete `login.json` to regenerate it: that changes the password salt and breaks every existing account.
 
 **I'm stuck at "Submitting to World Server" after picking the server.** Check `server/eqemu_config.json`: under `loginserver1`, `legacy` must be `"0"` for the built-in login server. With `"1"`, the login server never hands you off to world. New installs get `"0"` automatically. Change it, then run `docker compose restart takp-server`.
 
