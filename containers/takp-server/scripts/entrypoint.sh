@@ -14,6 +14,8 @@ fi
 
 # Ensure auth.log exists before rsyslog/sshd start (fail2ban watches this)
 touch /var/log/auth.log
+# Remove a PID file left by a previous run of this container; rsyslogd refuses to start if it exists
+rm -f /run/rsyslogd.pid
 rsyslogd
 /usr/sbin/sshd
 
